@@ -1,0 +1,105 @@
+plugins {
+    id 'application'
+    id 'eclipse'
+    id 'java'
+}
+
+group = 'com.glencoesoftware.roitool'
+version = '0.1.0-SNAPSHOT'
+
+mainClassName = 'com.glencoesoftware.roitool.Main'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+    jcenter()
+    maven {
+        name 'Unidata'
+        url 'https://artifacts.unidata.ucar.edu/content/repositories/unidata-releases'
+    }
+    maven {
+        url 'http://artifacts.openmicroscopy.org/artifactory/maven/'
+    }
+}
+
+configurations.all {
+    resolutionStrategy.cacheChangingModulesFor 0, 'minutes'
+    exclude group: 'OME'
+    exclude group: 'antlr'
+    exclude group: 'asm'
+    exclude group: 'backport-util-concurrent'
+    exclude group: 'batik'
+    exclude group: 'cglib'
+    exclude group: 'checkstyle'
+    exclude group: 'com.jamonapi'
+    exclude group: 'com.mortennobel'
+    exclude group: 'com.zeroc', module: 'freeze'
+    exclude group: 'com.zeroc', module: 'icefreeze'
+    exclude group: 'com.zeroc', module: 'icegrid'
+    exclude group: 'com.zeroc', module: 'icestorm'
+    exclude group: 'commons-beanutils'
+    exclude group: 'commons-codec'
+    exclude group: 'commons-collections'
+    exclude group: 'commons-io'
+    exclude group: 'commons-lang'
+    exclude group: 'commons-pool'
+    exclude group: 'dom4j'
+    exclude group: 'edu.ucar'
+    exclude group: 'freemarker'
+    exclude group: 'gnu.getopt'
+    exclude group: 'hsqldb'
+    exclude group: 'javassist'
+    exclude group: 'javax.jts'
+    exclude group: 'jmock'
+    exclude group: 'net.sourceforge.findbugs'
+    exclude group: 'org.apache.ant'
+    exclude group: 'org.apache.lucene'
+    exclude group: 'org.apache.httpcomponents'
+    exclude group: 'org.ini4j'
+    exclude group: 'org.uncommons'
+    exclude group: 'org.subethamail'
+    exclude group: 'pdfbox'
+    exclude group: 'quartz'
+    exclude group: 'xerces'
+    exclude group: 'xalan'
+    exclude group: 'xml-apis'
+    exclude group: 'zeroc', module: 'ice-db'
+}
+
+dependencies {
+    compile ('omero:blitz:5.4.10-ice36-b105') {
+        exclude group: 'org.testng', module: 'testng'
+    }
+    compile 'ch.qos.logback:logback-classic:1.1.7'
+    compile 'ch.qos.logback:logback-core:1.1.7'
+    compile 'net.sourceforge.argparse4j:argparse4j:0.7.0'
+    compile 'info.picocli:picocli:3.9.3'
+    testCompile 'org.testng:testng:6.10'
+}
+
+jar {
+    manifest {
+        attributes(
+            "Main-Class": mainClassName,
+            "Implementation-Version": version
+        )
+    }
+}
+
+test {
+  // enable TestNG support (default is JUnit)
+  useTestNG()
+}
+
+distributions {
+    main {
+        contents {
+            from("$projectDir") {
+                include 'README.md'
+                include 'LICENSE.txt'
+            }
+        }
+    }
+}
+
