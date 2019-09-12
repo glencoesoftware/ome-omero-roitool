@@ -1,6 +1,6 @@
 /**
  * -----------------------------------------------------------------------------
- *   Copyright (C) 2015 Glencoe Software, Inc. All rights reserved.
+ *   Copyright (C) 2019 Glencoe Software, Inc. All rights reserved.
  *
  *
  *   This program is free software; you can redistribute it and/or modify
