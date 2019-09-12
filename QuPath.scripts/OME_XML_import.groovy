@@ -1,7 +1,35 @@
 /**
- * Import ROIs (detections and annotations) from a QuPath project to OME-XML
+ * -----------------------------------------------------------------------------
+ *   Copyright (C) 2015 Glencoe Software, Inc. All rights reserved.
  *
- * Users are prompted for the location of the OME-XML to import.
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License along
+ *   with this program; if not, write to the Free Software Foundation, Inc.,
+ *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * ------------------------------------------------------------------------------
+ *
+ * QuPath OME-XML Importer
+ *
+ * This script will import ROIs from an OME-XML file and generate detections and
+ * annotations for the current image opened in QuPath
+ *
+ * Instructions:
+ *   - Open the image to be annotated in QuPath
+ *   - Open this file in the QuPath "Script editor"
+ *   - Choose "Run" from the Run menu
+ *   - When prompted, choose the OME-XML file to import
+ *   - If the imported ROIs contain more than one value of stroke width, you will
+ *     be prompted for which value to use for all annotations and/or detections
  */
 
 
