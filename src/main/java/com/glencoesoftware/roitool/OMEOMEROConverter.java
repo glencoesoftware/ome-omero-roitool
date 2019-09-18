@@ -37,29 +37,38 @@ import loci.common.services.ServiceFactory;
 import loci.formats.MissingLibraryException;
 import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.services.OMEXMLService;
-import loci.formats.services.OMEXMLServiceImpl;
+import ome.specification.XMLWriter;
 import ome.system.Login;
 import ome.xml.meta.MetadataConverter;
+import ome.xml.model.OME;
 import omero.ServerError;
-import omero.api.IQueryPrx;
+import omero.api.IConfigPrx;
 import omero.model.IObject;
 import omero.model.Roi;
 import omero.sys.ParametersI;
 
 public class OMEOMEROConverter {
 
-    long imageId;
-
-    ROIMetadataStoreClient target;
-
-    public static final ImmutableMap<String, String> ALL_GROUPS_CONTEXT = ImmutableMap.of(Login.OMERO_GROUP, "-1");
-
     private static final Logger log =
             LoggerFactory.getLogger(OMEOMEROConverter.class);
 
-    public OMEOMEROConverter(long imageId) {
+    public static final ImmutableMap<String, String> ALL_GROUPS_CONTEXT =
+            ImmutableMap.of(Login.OMERO_GROUP, "-1");
+
+    private final long imageId;
+
+    private final ROIMetadataStoreClient target;
+
+    private final OMEXMLService omeXmlService;
+
+    private String lsidFormat;
+
+    public OMEOMEROConverter(long imageId)
+            throws ServerError, DependencyException {
         this.imageId = imageId;
         this.target = new ROIMetadataStoreClient();
+        ServiceFactory factory = new ServiceFactory();
+        this.omeXmlService = factory.getInstance(OMEXMLService.class);
     }
 
     public void initialize(String username, String password, String server, int port)
@@ -67,13 +76,17 @@ public class OMEOMEROConverter {
                    ServerError
     {
         target.initialize(username, password, server, port);
+        IConfigPrx iConfig = this.target.getServiceFactory().getConfigService();
+        this.lsidFormat = String.format("urn:lsid:%s:%%s:%s_%%s:%%s",
+                iConfig.getConfigValue("omero.db.authority"),
+                iConfig.getDatabaseUuid());
     }
 
     public void initialize(String server, int port, String sessionKey)
             throws CannotCreateSessionException, PermissionDeniedException,
                    ServerError
     {
-        target.initialize(server, port, sessionKey);
+        initialize(sessionKey, sessionKey, server, port);
     }
 
     public List<IObject> importRoisFromFile(File input)
@@ -85,12 +98,9 @@ public class OMEOMEROConverter {
             log.debug("Importing OME-XML: {}", xml);
 
         OMEXMLMetadata omexmlMeta;
-        OMEXMLService service;
         try {
-            ServiceFactory factory = new ServiceFactory();
-            service = factory.getInstance(OMEXMLService.class);
             log.info("Creating omexmlMeta");
-            omexmlMeta = service.createOMEXMLMetadata(xml);
+            omexmlMeta = omeXmlService.createOMEXMLMetadata(xml);
             log.info("Converting to OMERO metadata");
             MetadataConverter.convertMetadata(omexmlMeta, target);
             log.info("ROI count: {}", omexmlMeta.getROICount());
@@ -109,11 +119,6 @@ public class OMEOMEROConverter {
                 log.error("Exception saving to DB", e);
             }
         }
-        catch (DependencyException de)
-        {
-            throw new MissingLibraryException(
-                    OMEXMLServiceImpl.NO_OME_XML_MSG, de);
-        }
         catch (ServiceException s)
         {
             log.error("Exception creating OME-XML metadata", s);
@@ -121,21 +126,57 @@ public class OMEOMEROConverter {
         return null;
     }
 
-    public List<IObject> exportRoisToFile(File file) throws DependencyException, ServerError {
-        OMEXMLService omexmlService = new ServiceFactory().getInstance(OMEXMLService.class);
-        IQueryPrx iQuery = target.getIQuery();
+    public List<? extends IObject> exportRoisToFile(File file)
+            throws Exception {
+        final OMEXMLMetadata xmlMeta = omeXmlService.createOMEXMLMetadata();
+        xmlMeta.createRoot();
+        List<Roi> rois = getRois();
+        omeXmlService.convertMetadata(
+                new ROIMetadata(this::getLsid, rois), xmlMeta);
+        XMLWriter xmlWriter = new XMLWriter();
+        xmlWriter.writeFile(file, (OME) xmlMeta.getRoot(), false);
+        return rois;
+    }
 
-        final List<Roi> rois = new ArrayList<>();
-        for (final IObject result : iQuery.findAllByQuery(
+    /**
+     * Find the LSID of the given OMERO model object.
+     * Ported from <code>org.openmicroscopy.client.downloader.XmlGenerator</code>
+     * @param object an OMERO model object, hydrated with its update event
+     * @return the LSID for that object
+     */
+    private String getLsid(IObject object) {
+        Class<? extends IObject> objectClass = object.getClass();
+        if (objectClass == IObject.class) {
+            throw new IllegalArgumentException(
+                    "must be of a specific model object type");
+        }
+        while (objectClass.getSuperclass() != IObject.class) {
+            objectClass = objectClass.getSuperclass().asSubclass(IObject.class);
+        }
+        final long objectId = object.getId().getValue();
+        final long updateId =
+                object.getDetails().getUpdateEvent().getId().getValue();
+        return String.format(
+                lsidFormat, objectClass.getSimpleName(), objectId, updateId);
+    }
+
+    /**
+     * Query the server for the given ROIs.
+     * Ported from <code>org.openmicroscopy.client.downloader.XmlGenerator</code>
+     * @return the ROIs, hydrated sufficiently for conversion to XML
+     * @throws ServerError if the ROIs could not be retrieved
+     */
+    private List<Roi> getRois() throws ServerError {
+        final List<Roi> rois = new ArrayList<Roi>();
+        for (final IObject result : target.getIQuery().findAllByQuery(
                 "FROM Roi r " +
-                        "LEFT OUTER JOIN FETCH r.shapes AS s " +
-                        "LEFT OUTER JOIN FETCH r.details.updateEvent " +
-                        "LEFT OUTER JOIN FETCH s.details.updateEvent " +
-                        "WHERE r.image.id = :id", new ParametersI().addId(this.imageId), ALL_GROUPS_CONTEXT)) {
+                "JOIN FETCH r.shapes AS s " +
+                "WHERE r.image.id = :id",
+                new ParametersI().addId(imageId),
+                ALL_GROUPS_CONTEXT)) {
             rois.add((Roi) result);
         }
-        log.debug("Found ROIs: {}", rois);
-        return null;
+        return rois;
     }
 
     public void close()
