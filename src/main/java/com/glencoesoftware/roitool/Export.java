@@ -29,10 +29,9 @@ import picocli.CommandLine.Parameters;
 
 @Command(
         name = "export",
-        description = "Import ROIs from OME-XML file into an OMERO server"
+        description = "Export ROIs to an OME-XML file from an OMERO server"
 )
-
-public class Export implements Callable<Integer>
+public class Export extends OMEROCommand implements Callable<Integer>
 {
     private static final Logger log =
             LoggerFactory.getLogger(Export.class);
@@ -56,61 +55,22 @@ public class Export implements Callable<Integer>
     )
     File output;
 
-    @CommandLine.Option(
-            names = "--port",
-            description = "OMERO server port"
-    )
-    int port = 4064;
-
-    @CommandLine.Option(
-            names = "--server",
-            description = "OMERO server address"
-    )
-    String server = "localhost";
-
-    @CommandLine.Option(
-            names = "--username",
-            description = "OMERO user name"
-    )
-    String username = null;
-
-    @CommandLine.Option(
-            names = "--password",
-            description = "OMERO password"
-    )
-    String password = null;
-
-    @CommandLine.Option(
-            names = "--key",
-            description = "OMERO session key"
-    )
-    String sessionKey = null;
-
     @Override
     public Integer call() throws Exception
     {
-        OMEOMEROConverter exporter = new OMEOMEROConverter(imageId);
-        if (username != null)
+        OMEOMEROConverter converter = createConverter(imageId);
+        if (converter == null)
         {
-            exporter.initialize(username, password, server, port);
-        }
-        else if (sessionKey != null)
-        {
-            exporter.initialize(server, port, sessionKey);
-        }
-        else
-        {
-            log.error("No OMERO username/password or session key, can't run!");
             return -1;
         }
 
         try
         {
-            exporter.exportRoisToFile(output);
+            converter.exportRoisToFile(output);
         }
         finally
         {
-            exporter.close();
+            converter.close();
         }
         return 0;
     }

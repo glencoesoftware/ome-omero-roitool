@@ -33,7 +33,7 @@ import picocli.CommandLine.Parameters;
     description = "Import ROIs from OME-XML file into an OMERO server"
 )
 
-public class Import implements Callable<Integer>
+public class Import extends OMEROCommand implements Callable<Integer>
 {
     private static final Logger log =
             LoggerFactory.getLogger(Import.class);
@@ -57,61 +57,22 @@ public class Import implements Callable<Integer>
     )
     File input;
 
-    @Option(
-        names = "--port",
-        description = "OMERO server port"
-    )
-    int port = 4064;
-
-    @Option(
-        names = "--server",
-        description = "OMERO server address"
-    )
-    String server = "localhost";
-
-    @Option(
-        names = "--username",
-        description = "OMERO user name"
-    )
-    String username = null;
-
-    @Option(
-        names = "--password",
-        description = "OMERO password"
-    )
-    String password = null;
-
-    @Option(
-        names = "--key",
-        description = "OMERO session key"
-    )
-    String sessionKey = null;
-
     @Override
     public Integer call() throws Exception
     {
-        OMEOMEROConverter importer = new OMEOMEROConverter(imageId);
-        if (username != null)
+        OMEOMEROConverter converter = createConverter(imageId);
+        if (converter == null)
         {
-            importer.initialize(username, password, server, port);
-        }
-        else if (sessionKey != null)
-        {
-            importer.initialize(server, port, sessionKey);
-        }
-        else
-        {
-            log.error("No OMERO username/password or session key, can't run!");
             return -1;
         }
 
         try
         {
-            importer.importRoisFromFile(input);
+            converter.importRoisFromFile(input);
         }
         finally
         {
-            importer.close();
+            converter.close();
         }
         return 0;
     }
