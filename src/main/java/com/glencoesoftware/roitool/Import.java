@@ -24,7 +24,6 @@ import java.util.concurrent.Callable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ch.qos.logback.classic.Level;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
@@ -57,23 +56,6 @@ public class Import implements Callable<Integer>
         description = "Input OME-XML file"
     )
     File input;
-
-    @Option(names = "--debug", description = "Set logging level to DEBUG")
-    boolean debug;
-
-    void setupLogger()
-    {
-        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)
-                LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-        if (debug)
-        {
-            root.setLevel(Level.DEBUG);
-        }
-        else
-        {
-            root.setLevel(Level.INFO);
-        }
-    }
 
     @Option(
         names = "--port",
@@ -108,7 +90,6 @@ public class Import implements Callable<Integer>
     @Override
     public Integer call() throws Exception
     {
-        setupLogger();
         OMEOMEROConverter importer = new OMEOMEROConverter(imageId);
         if (username != null)
         {

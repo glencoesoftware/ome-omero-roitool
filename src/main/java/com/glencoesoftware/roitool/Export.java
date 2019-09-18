@@ -21,7 +21,6 @@ package com.glencoesoftware.roitool;
 import java.io.File;
 import java.util.concurrent.Callable;
 
-import ch.qos.logback.classic.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
@@ -57,23 +56,6 @@ public class Export implements Callable<Integer>
     )
     File output;
 
-    @CommandLine.Option(names = "--debug", description = "Set logging level to DEBUG")
-    boolean debug;
-
-    void setupLogger()
-    {
-        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)
-                LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-        if (debug)
-        {
-            root.setLevel(Level.DEBUG);
-        }
-        else
-        {
-            root.setLevel(Level.INFO);
-        }
-    }
-
     @CommandLine.Option(
             names = "--port",
             description = "OMERO server port"
@@ -107,7 +89,6 @@ public class Export implements Callable<Integer>
     @Override
     public Integer call() throws Exception
     {
-        setupLogger();
         OMEOMEROConverter exporter = new OMEOMEROConverter(imageId);
         if (username != null)
         {

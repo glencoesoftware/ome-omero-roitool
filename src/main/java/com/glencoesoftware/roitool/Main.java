@@ -25,8 +25,6 @@ import ch.qos.logback.classic.Level;
 
 import java.util.concurrent.Callable;
 
-import net.sourceforge.argparse4j.annotation.Arg;
-
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -51,12 +49,6 @@ public class Main implements Callable<Integer>
 
     private static final Logger log =
             LoggerFactory.getLogger(Main.class);
-
-    @Arg
-    private String source;
-
-    @Arg
-    private String output;
 
     @Option(names = "--debug", description = "Set logging level to DEBUG")
     boolean debug;
