@@ -61,6 +61,43 @@ $ ome-omero-roitool import --server localhost --username test --password test 30
 13:10:41.509 [main] INFO com.glencoesoftware.roitool.ROIMetadataStoreClient - Saved ROI with ID: 534878
 ```
 
+ROI export
+----------
+
+```
+$ ome-omero-roitool export --help
+13:12:01.925 [main] INFO com.glencoesoftware.roitool.Main - ROI tool 0.1.0-SNAPSHOT started
+Usage: <main class> export [--help] [--key=<sessionKey>]
+                           [--password=<password>] [--port=<port>]
+                           [--server=<server>] [--username=<username>]
+                           <imageId> <output>
+Export ROIs to an OME-XML file from an OMERO server
+      <imageId>            OMERO Image ID to export ROIs from
+      <output>             Path to write OME-XML file to
+      --help               Display this help and exit
+      --key=<sessionKey>   OMERO session key
+      --password=<password>
+                           OMERO password
+      --port=<port>        OMERO server port
+      --server=<server>    OMERO server address
+      --username=<username>
+                           OMERO user name
+```
+
+Example
+-------
+
+```
+$ ome-omero-roitool import --server localhost --username test --password test 30101 test.ome.xml
+11:43:46.728 [main] INFO com.glencoesoftware.roitool.Main - ROI tool 0.1.0-SNAPSHOT started
+11:43:46.987 [main] INFO ome.formats.OMEROMetadataStoreClient - Attempting initial SSL connection to localhost:4064
+11:43:49.566 [main] INFO ome.formats.OMEROMetadataStoreClient - Insecure connection requested, falling back
+11:43:52.850 [main] INFO com.glencoesoftware.roitool.OMEOMEROConverter - ROI export started
+11:43:53.240 [main] INFO com.glencoesoftware.roitool.OMEOMEROConverter - Converting to OME-XML metadata
+11:43:53.286 [main] INFO com.glencoesoftware.roitool.OMEOMEROConverter - ROI count: 8
+11:43:53.286 [main] INFO com.glencoesoftware.roitool.OMEOMEROConverter - Writing OME-XML to: test.ome.xml
+```
+
 Development Installation
 ========================
 
