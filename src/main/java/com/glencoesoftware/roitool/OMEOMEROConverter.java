@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -29,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import Glacier2.CannotCreateSessionException;
 import Glacier2.PermissionDeniedException;
+import com.google.common.collect.ImmutableMap;
 import loci.common.services.DependencyException;
 import loci.common.services.ServiceException;
 import loci.common.services.ServiceFactory;
@@ -36,16 +38,22 @@ import loci.formats.MissingLibraryException;
 import loci.formats.ome.OMEXMLMetadata;
 import loci.formats.services.OMEXMLService;
 import loci.formats.services.OMEXMLServiceImpl;
+import ome.system.Login;
 import ome.xml.meta.MetadataConverter;
 import omero.ServerError;
+import omero.api.IQueryPrx;
 import omero.model.IObject;
+import omero.model.Roi;
+import omero.sys.ParametersI;
 
 public class OMEOMEROConverter {
 
     long imageId;
 
     ROIMetadataStoreClient target;
- 
+
+    public static final ImmutableMap<String, String> ALL_GROUPS_CONTEXT = ImmutableMap.of(Login.OMERO_GROUP, "-1");
+
     private static final Logger log =
             LoggerFactory.getLogger(OMEOMEROConverter.class);
 
@@ -110,6 +118,23 @@ public class OMEOMEROConverter {
         {
             log.error("Exception creating OME-XML metadata", s);
         }
+        return null;
+    }
+
+    public List<IObject> exportRoisToFile(File file) throws DependencyException, ServerError {
+        OMEXMLService omexmlService = new ServiceFactory().getInstance(OMEXMLService.class);
+        IQueryPrx iQuery = target.getIQuery();
+
+        final List<Roi> rois = new ArrayList<>();
+        for (final IObject result : iQuery.findAllByQuery(
+                "FROM Roi r " +
+                        "LEFT OUTER JOIN FETCH r.shapes AS s " +
+                        "LEFT OUTER JOIN FETCH r.details.updateEvent " +
+                        "LEFT OUTER JOIN FETCH s.details.updateEvent " +
+                        "WHERE r.image.id = :id", new ParametersI().addId(this.imageId), ALL_GROUPS_CONTEXT)) {
+            rois.add((Roi) result);
+        }
+        log.debug("Found ROIs: {}", rois);
         return null;
     }
 

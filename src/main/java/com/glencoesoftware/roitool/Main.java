@@ -36,7 +36,8 @@ import picocli.CommandLine.Option;
  */
 @Command(
     subcommands = {
-        Import.class
+        Import.class,
+        Export.class
     }
 )
 public class Main implements Callable<Integer>
