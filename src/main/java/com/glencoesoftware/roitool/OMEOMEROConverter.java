@@ -97,13 +97,12 @@ public class OMEOMEROConverter {
                 Files.readAllBytes(input.toPath()), StandardCharsets.UTF_8);
             log.debug("Importing OME-XML: {}", xml);
 
-        OMEXMLMetadata omexmlMeta;
+        OMEXMLMetadata xmlMeta;
         try {
-            log.info("Creating omexmlMeta");
-            omexmlMeta = omeXmlService.createOMEXMLMetadata(xml);
+            xmlMeta = omeXmlService.createOMEXMLMetadata(xml);
             log.info("Converting to OMERO metadata");
-            MetadataConverter.convertMetadata(omexmlMeta, target);
-            log.info("ROI count: {}", omexmlMeta.getROICount());
+            MetadataConverter.convertMetadata(xmlMeta, target);
+            log.info("ROI count: {}", xmlMeta.getROICount());
             log.debug("Containers: {}",
                       target.countCachedContainers(null, null));
             log.debug("References: {}",
@@ -128,11 +127,15 @@ public class OMEOMEROConverter {
 
     public List<? extends IObject> exportRoisToFile(File file)
             throws Exception {
+        log.info("ROI export started");
         final OMEXMLMetadata xmlMeta = omeXmlService.createOMEXMLMetadata();
         xmlMeta.createRoot();
         List<Roi> rois = getRois();
+        log.info("Converting to OME-XML metadata");
         omeXmlService.convertMetadata(
                 new ROIMetadata(this::getLsid, rois), xmlMeta);
+        log.info("ROI count: {}", xmlMeta.getROICount());
+        log.info("Writing OME-XML to: {}", file.getAbsolutePath());
         XMLWriter xmlWriter = new XMLWriter();
         xmlWriter.writeFile(file, (OME) xmlMeta.getRoot(), false);
         return rois;
