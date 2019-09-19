@@ -222,4 +222,4 @@ ome.setStructuredAnnotations(structuredAnnotations);
 qupath = QPEx.getQuPath()
 file = qupath.getDialogHelper().promptToSaveFile("Choose OME-XML export location", null, null, "OME-XML", ".ome.xml")
 xmlWriter = new XMLWriter();
-xmlWriter.writeFile(new File(file), ome, false);
+xmlWriter.writeFile(file, ome, false);
