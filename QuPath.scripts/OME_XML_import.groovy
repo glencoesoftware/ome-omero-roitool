@@ -38,6 +38,7 @@ import javafx.application.Platform
 import javafx.embed.swing.JFXPanel
 import javafx.geometry.Insets
 import javafx.scene.Scene
+import javafx.scene.control.Button
 import javafx.scene.layout.BorderPane
 import javafx.stage.Stage
 import loci.common.services.ServiceFactory
@@ -52,7 +53,6 @@ import qupath.lib.gui.scripting.QPEx
 import qupath.lib.objects.PathAnnotationObject
 import qupath.lib.objects.PathDetectionObject
 import qupath.lib.objects.PathROIObject
-import qupath.lib.plugins.parameters.Parameter
 import qupath.lib.plugins.parameters.ParameterChangeListener
 import qupath.lib.plugins.parameters.ParameterList
 import qupath.lib.regions.ImagePlane
@@ -344,7 +344,11 @@ void chooseLineWidths() {
         }
     })
 
+    def button = new Button("OK")
+    button.setDefaultButton(true)
+    button.setOnAction({ frame.close() })
     borderPane.setCenter(panel.getPane())
+    borderPane.setBottom(button)
     borderPane.setPadding(new Insets(10, 10, 10, 10))
 
     frame.setScene(new Scene(borderPane))
