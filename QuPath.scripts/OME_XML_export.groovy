@@ -30,6 +30,7 @@
  *   - When prompted, choose the location and filename for the exported OME-XML
  */
 
+import ome.specification.XMLWriter;
 import ome.units.UNITS
 import ome.units.quantity.Length
 import ome.xml.model.*
@@ -218,21 +219,7 @@ rois.eachWithIndex { PathROIObject path, int i ->
 
 ome.setStructuredAnnotations(structuredAnnotations);
 
-// Create document
-document = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument()
-root = ome.asXMLElement(document)
-document.appendChild(root)
-
-// Transform to string
-transformer = TransformerFactory.newInstance().newTransformer()
-transformer.setOutputProperty(OutputKeys.INDENT, "yes")
-transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4")
-source = new DOMSource(document) as Source
-os = new ByteArrayOutputStream()
-result = new StreamResult(new OutputStreamWriter(os, "utf-8")) as Result
-transformer.transform(source, result)
-xmlDocument = os.toString()
 qupath = QPEx.getQuPath()
 file = qupath.getDialogHelper().promptToSaveFile("Choose OME-XML export location", null, null, "OME-XML", ".ome.xml")
-outputStream = new FileOutputStream(file)
-outputStream.write(xmlDocument.getBytes())
+xmlWriter = new XMLWriter();
+xmlWriter.writeFile(file, ome, false);

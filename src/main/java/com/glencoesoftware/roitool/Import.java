@@ -24,7 +24,6 @@ import java.util.concurrent.Callable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ch.qos.logback.classic.Level;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
@@ -34,7 +33,7 @@ import picocli.CommandLine.Parameters;
     description = "Import ROIs from OME-XML file into an OMERO server"
 )
 
-public class Import implements Callable<Integer>
+public class Import extends OMEROCommand implements Callable<Integer>
 {
     private static final Logger log =
             LoggerFactory.getLogger(Import.class);
@@ -58,79 +57,22 @@ public class Import implements Callable<Integer>
     )
     File input;
 
-    @Option(names = "--debug", description = "Set logging level to DEBUG")
-    boolean debug;
-
-    void setupLogger()
-    {
-        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)
-                LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-        if (debug)
-        {
-            root.setLevel(Level.DEBUG);
-        }
-        else
-        {
-            root.setLevel(Level.INFO);
-        }
-    }
-
-    @Option(
-        names = "--port",
-        description = "OMERO server port"
-    )
-    int port = 4064;
-
-    @Option(
-        names = "--server",
-        description = "OMERO server address"
-    )
-    String server = "localhost";
-
-    @Option(
-        names = "--username",
-        description = "OMERO user name"
-    )
-    String username = null;
-
-    @Option(
-        names = "--password",
-        description = "OMERO password"
-    )
-    String password = null;
-
-    @Option(
-        names = "--key",
-        description = "OMERO session key"
-    )
-    String sessionKey = null;
-
     @Override
     public Integer call() throws Exception
     {
-        setupLogger();
-        OMEOMEROConverter importer = new OMEOMEROConverter(imageId);
-        if (username != null)
+        OMEOMEROConverter converter = createConverter(imageId);
+        if (converter == null)
         {
-            importer.initialize(username, password, server, port);
-        }
-        else if (sessionKey != null)
-        {
-            importer.initialize(server, port, sessionKey);
-        }
-        else
-        {
-            log.error("No OMERO username/password or session key, can't run!");
             return -1;
         }
 
         try
         {
-            importer.importRoisFromFile(input);
+            converter.importRoisFromFile(input);
         }
         finally
         {
-            importer.close();
+            converter.close();
         }
         return 0;
     }
