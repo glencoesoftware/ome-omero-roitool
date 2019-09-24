@@ -30,7 +30,9 @@
  *   - When prompted, choose the location and filename for the exported OME-XML
  */
 
-import ome.specification.XMLWriter;
+
+
+import ome.specification.XMLWriter
 import ome.units.UNITS
 import ome.units.quantity.Length
 import ome.xml.model.*
@@ -42,14 +44,6 @@ import qupath.lib.gui.prefs.PathPrefs
 import qupath.lib.gui.scripting.QPEx
 import qupath.lib.objects.PathROIObject
 import qupath.lib.roi.*
-
-import javax.xml.parsers.DocumentBuilderFactory
-import javax.xml.transform.OutputKeys
-import javax.xml.transform.Result
-import javax.xml.transform.Source
-import javax.xml.transform.TransformerFactory
-import javax.xml.transform.dom.DOMSource
-import javax.xml.transform.stream.StreamResult
 
 ome = new OME()
 structuredAnnotations = new StructuredAnnotations()
@@ -85,7 +79,12 @@ static void setCommonProperties(Shape shape, PathROIObject path, qupath.lib.roi.
                 ColorTools.alpha(packedColor))
         shape.setStrokeColor(color)
         // Note: QuPath does not allow stroke and fill color to be specified separately
-        // shape.setFillColor(color)
+        def overlayOptions = QPEx.currentViewer.getOverlayOptions()
+        overlayOptions.getFillAnnotations()
+        if ((path.isAnnotation() && overlayOptions.fillAnnotations) ||
+                (path.isDetection() && overlayOptions.fillDetections)) {
+             shape.setFillColor(color)
+        }
     }
 
     // Note: Not currently used by QuPath, but may be useful for "cutout" ROIs
