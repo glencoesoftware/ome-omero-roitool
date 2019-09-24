@@ -129,10 +129,14 @@ thickLineStrokeWidths = new HashSet<>()
                 def t = omexml.getEllipseTheT(roiIdx, shapeIdx)
                 t = t != null ? t.numberValue.intValue() : 0
                 def plane = new ImagePlane(c, z, t)
-                def x = omexml.getEllipseX(roiIdx, shapeIdx)
-                def y = omexml.getEllipseY(roiIdx, shapeIdx)
-                def width = omexml.getEllipseRadiusX(roiIdx, shapeIdx)
-                def height = omexml.getEllipseRadiusY(roiIdx, shapeIdx)
+                def centroidX = omexml.getEllipseX(roiIdx, shapeIdx)
+                def centroidY = omexml.getEllipseY(roiIdx, shapeIdx)
+                def radiusX = omexml.getEllipseRadiusX(roiIdx, shapeIdx)
+                def radiusY = omexml.getEllipseRadiusY(roiIdx, shapeIdx)
+                x = centroidX - radiusX
+                y = centroidY - radiusY
+                width = radiusX * 2
+                height = radiusY * 2
                 roi = new EllipseROI(x, y, width, height, plane)
                 
                 break
