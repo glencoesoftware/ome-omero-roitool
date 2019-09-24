@@ -118,6 +118,9 @@ rois.eachWithIndex { PathROIObject path, int i ->
     // New ROI
     def omeROI = new ROI()
     omeROI.setID(roiID)
+    if (path.pathClass != null) {
+        omeROI.setName(path.pathClass.name)
+    }
 
     // Instantiate the class of the shape from the type of ROI and set class specific properties
     switch (roi) {
@@ -206,7 +209,9 @@ rois.eachWithIndex { PathROIObject path, int i ->
 
     // Add all the key-value pairs
     def pairList = new ArrayList<MapPair>()
-    pairList.add(new MapPair("qupath:class", roi.class.name))
+    if (path.pathClass != null) {
+        pairList.add(new MapPair("qupath:class", path.pathClass.name))
+    }
     if (path.getName()) {
         pairList.add(new MapPair("qupath:name", path.getName()))
     }
