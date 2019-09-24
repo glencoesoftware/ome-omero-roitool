@@ -69,6 +69,8 @@ static void setCommonProperties(Shape shape, PathROIObject path, qupath.lib.roi.
     shape.setTheT(new NonNegativeInteger(roi.t))
     shape.setTheZ(new NonNegativeInteger(roi.z))
 
+    shape.setLocked(path.isLocked())
+
     // Unpack the color
     def packedColor = path.colorRGB
     if (packedColor != null) {

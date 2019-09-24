@@ -120,6 +120,8 @@ thickLineStrokeWidths = new HashSet<>()
                         break
                 }
 
+                path.setLocked(omexml.getEllipseLocked(roiIdx, shapeIdx))
+
                 def c = omexml.getEllipseTheC(roiIdx, shapeIdx)
                 c = c != null ? c.numberValue.intValue() : 0
                 def z = omexml.getEllipseTheZ(roiIdx, shapeIdx)
@@ -150,6 +152,8 @@ thickLineStrokeWidths = new HashSet<>()
                         thickLineStrokeWidths.add(omexml.getLineStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL))
                         break
                 }
+
+                path.setLocked(omexml.getLineLocked(roiIdx, shapeIdx))
 
                 def c = omexml.getLineTheC(roiIdx, shapeIdx)
                 c = c != null ? c.numberValue.intValue() : 0
@@ -182,6 +186,8 @@ thickLineStrokeWidths = new HashSet<>()
                         break
                 }
 
+                path.setLocked(omexml.getPointLocked(roiIdx, shapeIdx))
+
                 def c = omexml.getPointTheC(roiIdx, shapeIdx)
                 c = c != null ? c.numberValue.intValue() : 0
                 def z = omexml.getPointTheZ(roiIdx, shapeIdx)
@@ -210,6 +216,8 @@ thickLineStrokeWidths = new HashSet<>()
                         thickLineStrokeWidths.add(omexml.getPolygonStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL))
                         break
                 }
+
+                path.setLocked(omexml.getPolygonLocked(roiIdx, shapeIdx))
 
                 def c = omexml.getPolygonTheC(roiIdx, shapeIdx)
                 c = c != null ? c.numberValue.intValue() : 0
@@ -243,6 +251,8 @@ thickLineStrokeWidths = new HashSet<>()
                         break
                 }
 
+                path.setLocked(omexml.getPolylineLocked(roiIdx, shapeIdx))
+
                 def c = omexml.getPolylineTheC(roiIdx, shapeIdx)
                 c = c != null ? c.numberValue.intValue() : 0
                 def z = omexml.getPolylineTheZ(roiIdx, shapeIdx)
@@ -274,6 +284,8 @@ thickLineStrokeWidths = new HashSet<>()
                         thickLineStrokeWidths.add(omexml.getRectangleStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL))
                         break
                 }
+
+                path.setLocked(omexml.getRectangleLocked(roiIdx, shapeIdx))
 
                 def c = omexml.getRectangleTheC(roiIdx, shapeIdx)
                 c = c != null ? c.numberValue.intValue() : 0
