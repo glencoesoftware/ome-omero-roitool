@@ -367,4 +367,6 @@ void chooseLineWidths() {
     frame.show()
 }
 
-chooseLineWidths()
+if (thickLineStrokeWidths.size() > 1 || thinLineStrokeWidths.size() > 1) {
+    chooseLineWidths()
+}
