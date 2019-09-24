@@ -73,6 +73,11 @@ static void setCommonProperties(Shape shape, PathROIObject path, qupath.lib.roi.
 
     // Unpack the color
     def packedColor = path.colorRGB
+    if (packedColor == null && path.pathClass != null) {
+        packedColor = path.pathClass.color
+    } else {
+        packedColor = PathPrefs.getColorDefaultAnnotations()
+    }
     if (packedColor != null) {
         def color = new Color(ColorTools.red(packedColor),
                 ColorTools.green(packedColor),
