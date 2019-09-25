@@ -66,26 +66,37 @@ factory = new ServiceFactory()
 service = factory.getInstance(OMEXMLService.class)
 OMEXMLMetadata omexml = service.createOMEXMLMetadata(xml)
 
-println("ROI count:" + omexml.getROICount())
+roiCount = omexml.getROICount()
+
+if (roiCount < 1) {
+    println("No ROIs found to import.")
+    return
+}
+
+println("ROI count: " + omexml.getROICount())
 newPathObjects = []
 thinLineStrokeWidths = new HashSet<>()
 thickLineStrokeWidths = new HashSet<>()
 
-(0..(omexml.getROICount() - 1)).each { roiIdx ->
+(0..(roiCount - 1)).each { roiIdx ->
 
     def mapAnnotations = [:]
-    (0..(omexml.getROIAnnotationRefCount(roiIdx) - 1)).each { annRefIdx ->
-        def (annType, annIdx) = omexml.getROIAnnotationRef(roiIdx, annRefIdx).split(/-/)
-        switch (annType) {
+    def annotationCount = omexml.getROIAnnotationRefCount(roiIdx)
+    if (annotationCount > 0) {
+        println("Found " + annotationCount + " annotations for ROI: " + roiIdx)
+        (0..(annotationCount - 1)).each { annRefIdx ->
+            def (annType, annIdx) = omexml.getROIAnnotationRef(roiIdx, annRefIdx).split(/-/)
+            switch (annType) {
             // Only import Map Annotations for now
-            case "MapAnnotation":
-                def mapPairs = omexml.getMapAnnotationValue(annIdx.toInteger())
-                mapPairs.each {
-                    mapAnnotations[it.name] = it.value
-                }
-                break
-            default:
-                println("OME-XML import does not handle annotations of type \"" + annType + "\" at this time.")
+                case "MapAnnotation":
+                    def mapPairs = omexml.getMapAnnotationValue(annIdx.toInteger())
+                    mapPairs.each {
+                        mapAnnotations[it.name] = it.value
+                    }
+                    break
+                default:
+                    println("OME-XML import does not handle annotations of type \"" + annType + "\" at this time.")
+            }
         }
     }
 
@@ -133,10 +144,10 @@ thickLineStrokeWidths = new HashSet<>()
                 def centroidY = omexml.getEllipseY(roiIdx, shapeIdx)
                 def radiusX = omexml.getEllipseRadiusX(roiIdx, shapeIdx)
                 def radiusY = omexml.getEllipseRadiusY(roiIdx, shapeIdx)
-                x = centroidX - radiusX
-                y = centroidY - radiusY
-                width = radiusX * 2
-                height = radiusY * 2
+                def x = centroidX - radiusX
+                def y = centroidY - radiusY
+                def width = radiusX * 2
+                def height = radiusY * 2
                 roi = new EllipseROI(x, y, width, height, plane)
                 
                 break
