@@ -66,26 +66,37 @@ factory = new ServiceFactory()
 service = factory.getInstance(OMEXMLService.class)
 OMEXMLMetadata omexml = service.createOMEXMLMetadata(xml)
 
-println("ROI count:" + omexml.getROICount())
+roiCount = omexml.getROICount()
+
+if (roiCount < 1) {
+    println("No ROIs found to import.")
+    return
+}
+
+println("ROI count: " + omexml.getROICount())
 newPathObjects = []
 thinLineStrokeWidths = new HashSet<>()
 thickLineStrokeWidths = new HashSet<>()
 
-(0..(omexml.getROICount() - 1)).each { roiIdx ->
+(0..(roiCount - 1)).each { roiIdx ->
 
     def mapAnnotations = [:]
-    (0..(omexml.getROIAnnotationRefCount(roiIdx) - 1)).each { annRefIdx ->
-        def (annType, annIdx) = omexml.getROIAnnotationRef(roiIdx, annRefIdx).split(/-/)
-        switch (annType) {
+    def annotationCount = omexml.getROIAnnotationRefCount(roiIdx)
+    if (annotationCount > 0) {
+        println("Found " + annotationCount + " annotations for ROI: " + roiIdx)
+        (0..(annotationCount - 1)).each { annRefIdx ->
+            def (annType, annIdx) = omexml.getROIAnnotationRef(roiIdx, annRefIdx).split(/-/)
+            switch (annType) {
             // Only import Map Annotations for now
-            case "MapAnnotation":
-                def mapPairs = omexml.getMapAnnotationValue(annIdx.toInteger())
-                mapPairs.each {
-                    mapAnnotations[it.name] = it.value
-                }
-                break
-            default:
-                println("OME-XML import does not handle annotations of type \"" + annType + "\" at this time.")
+                case "MapAnnotation":
+                    def mapPairs = omexml.getMapAnnotationValue(annIdx.toInteger())
+                    mapPairs.each {
+                        mapAnnotations[it.name] = it.value
+                    }
+                    break
+                default:
+                    println("OME-XML import does not handle annotations of type \"" + annType + "\" at this time.")
+            }
         }
     }
 
@@ -120,6 +131,8 @@ thickLineStrokeWidths = new HashSet<>()
                         break
                 }
 
+                path.setLocked(omexml.getEllipseLocked(roiIdx, shapeIdx))
+
                 def c = omexml.getEllipseTheC(roiIdx, shapeIdx)
                 c = c != null ? c.numberValue.intValue() : 0
                 def z = omexml.getEllipseTheZ(roiIdx, shapeIdx)
@@ -127,10 +140,14 @@ thickLineStrokeWidths = new HashSet<>()
                 def t = omexml.getEllipseTheT(roiIdx, shapeIdx)
                 t = t != null ? t.numberValue.intValue() : 0
                 def plane = new ImagePlane(c, z, t)
-                def x = omexml.getEllipseX(roiIdx, shapeIdx)
-                def y = omexml.getEllipseY(roiIdx, shapeIdx)
-                def width = omexml.getEllipseRadiusX(roiIdx, shapeIdx)
-                def height = omexml.getEllipseRadiusY(roiIdx, shapeIdx)
+                def centroidX = omexml.getEllipseX(roiIdx, shapeIdx)
+                def centroidY = omexml.getEllipseY(roiIdx, shapeIdx)
+                def radiusX = omexml.getEllipseRadiusX(roiIdx, shapeIdx)
+                def radiusY = omexml.getEllipseRadiusY(roiIdx, shapeIdx)
+                def x = centroidX - radiusX
+                def y = centroidY - radiusY
+                def width = radiusX * 2
+                def height = radiusY * 2
                 roi = new EllipseROI(x, y, width, height, plane)
                 
                 break
@@ -150,6 +167,8 @@ thickLineStrokeWidths = new HashSet<>()
                         thickLineStrokeWidths.add(omexml.getLineStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL))
                         break
                 }
+
+                path.setLocked(omexml.getLineLocked(roiIdx, shapeIdx))
 
                 def c = omexml.getLineTheC(roiIdx, shapeIdx)
                 c = c != null ? c.numberValue.intValue() : 0
@@ -182,6 +201,8 @@ thickLineStrokeWidths = new HashSet<>()
                         break
                 }
 
+                path.setLocked(omexml.getPointLocked(roiIdx, shapeIdx))
+
                 def c = omexml.getPointTheC(roiIdx, shapeIdx)
                 c = c != null ? c.numberValue.intValue() : 0
                 def z = omexml.getPointTheZ(roiIdx, shapeIdx)
@@ -210,6 +231,8 @@ thickLineStrokeWidths = new HashSet<>()
                         thickLineStrokeWidths.add(omexml.getPolygonStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL))
                         break
                 }
+
+                path.setLocked(omexml.getPolygonLocked(roiIdx, shapeIdx))
 
                 def c = omexml.getPolygonTheC(roiIdx, shapeIdx)
                 c = c != null ? c.numberValue.intValue() : 0
@@ -243,6 +266,8 @@ thickLineStrokeWidths = new HashSet<>()
                         break
                 }
 
+                path.setLocked(omexml.getPolylineLocked(roiIdx, shapeIdx))
+
                 def c = omexml.getPolylineTheC(roiIdx, shapeIdx)
                 c = c != null ? c.numberValue.intValue() : 0
                 def z = omexml.getPolylineTheZ(roiIdx, shapeIdx)
@@ -274,6 +299,8 @@ thickLineStrokeWidths = new HashSet<>()
                         thickLineStrokeWidths.add(omexml.getRectangleStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL))
                         break
                 }
+
+                path.setLocked(omexml.getRectangleLocked(roiIdx, shapeIdx))
 
                 def c = omexml.getRectangleTheC(roiIdx, shapeIdx)
                 c = c != null ? c.numberValue.intValue() : 0
@@ -355,4 +382,6 @@ void chooseLineWidths() {
     frame.show()
 }
 
-chooseLineWidths()
+if (thickLineStrokeWidths.size() > 1 || thinLineStrokeWidths.size() > 1) {
+    chooseLineWidths()
+}

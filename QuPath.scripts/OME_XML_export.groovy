@@ -30,7 +30,9 @@
  *   - When prompted, choose the location and filename for the exported OME-XML
  */
 
-import ome.specification.XMLWriter;
+
+
+import ome.specification.XMLWriter
 import ome.units.UNITS
 import ome.units.quantity.Length
 import ome.xml.model.*
@@ -42,14 +44,6 @@ import qupath.lib.gui.prefs.PathPrefs
 import qupath.lib.gui.scripting.QPEx
 import qupath.lib.objects.PathROIObject
 import qupath.lib.roi.*
-
-import javax.xml.parsers.DocumentBuilderFactory
-import javax.xml.transform.OutputKeys
-import javax.xml.transform.Result
-import javax.xml.transform.Source
-import javax.xml.transform.TransformerFactory
-import javax.xml.transform.dom.DOMSource
-import javax.xml.transform.stream.StreamResult
 
 ome = new OME()
 structuredAnnotations = new StructuredAnnotations()
@@ -69,8 +63,15 @@ static void setCommonProperties(Shape shape, PathROIObject path, qupath.lib.roi.
     shape.setTheT(new NonNegativeInteger(roi.t))
     shape.setTheZ(new NonNegativeInteger(roi.z))
 
+    shape.setLocked(path.isLocked())
+
     // Unpack the color
     def packedColor = path.colorRGB
+    if (packedColor == null && path.pathClass != null) {
+        packedColor = path.pathClass.color
+    } else {
+        packedColor = PathPrefs.getColorDefaultAnnotations()
+    }
     if (packedColor != null) {
         def color = new Color(ColorTools.red(packedColor),
                 ColorTools.green(packedColor),
@@ -78,7 +79,12 @@ static void setCommonProperties(Shape shape, PathROIObject path, qupath.lib.roi.
                 ColorTools.alpha(packedColor))
         shape.setStrokeColor(color)
         // Note: QuPath does not allow stroke and fill color to be specified separately
-        // shape.setFillColor(color)
+        def overlayOptions = QPEx.currentViewer.getOverlayOptions()
+        overlayOptions.getFillAnnotations()
+        if ((path.isAnnotation() && overlayOptions.fillAnnotations) ||
+                (path.isDetection() && overlayOptions.fillDetections)) {
+             shape.setFillColor(color)
+        }
     }
 
     // Note: Not currently used by QuPath, but may be useful for "cutout" ROIs
@@ -112,6 +118,9 @@ rois.eachWithIndex { PathROIObject path, int i ->
     // New ROI
     def omeROI = new ROI()
     omeROI.setID(roiID)
+    if (path.pathClass != null) {
+        omeROI.setName(path.pathClass.name)
+    }
 
     // Instantiate the class of the shape from the type of ROI and set class specific properties
     switch (roi) {
@@ -120,10 +129,10 @@ rois.eachWithIndex { PathROIObject path, int i ->
             def shape = new Ellipse()
             def union = new Union()
             shape.setID(shapeID)
-            shape.setX(ellipse.x)
-            shape.setY(ellipse.y)
-            shape.setRadiusX(ellipse.x2 - ellipse.x)
-            shape.setRadiusY(ellipse.y2 - ellipse.y)
+            shape.setX(ellipse.getCentroidX())
+            shape.setY(ellipse.getCentroidY())
+            shape.setRadiusX(ellipse.getBoundsWidth() / 2)
+            shape.setRadiusY(ellipse.getBoundsHeight() / 2)
             setCommonProperties(shape, path, roi)
             union.addShape(shape as Shape)
             omeROI.setUnion(union)
@@ -186,8 +195,8 @@ rois.eachWithIndex { PathROIObject path, int i ->
             shape.setID(shapeID)
             shape.setX(rect.x)
             shape.setY(rect.y)
-            shape.setWidth(rect.x2 - rect.x)
-            shape.setHeight(rect.y2 - rect.y)
+            shape.setWidth(rect.getBoundsWidth())
+            shape.setHeight(rect.getBoundsHeight())
             setCommonProperties(shape, path, roi)
             union.addShape(shape as Shape)
             omeROI.setUnion(union)
@@ -200,7 +209,9 @@ rois.eachWithIndex { PathROIObject path, int i ->
 
     // Add all the key-value pairs
     def pairList = new ArrayList<MapPair>()
-    pairList.add(new MapPair("qupath:class", roi.class.name))
+    if (path.pathClass != null) {
+        pairList.add(new MapPair("qupath:class", path.pathClass.name))
+    }
     if (path.getName()) {
         pairList.add(new MapPair("qupath:name", path.getName()))
     }
