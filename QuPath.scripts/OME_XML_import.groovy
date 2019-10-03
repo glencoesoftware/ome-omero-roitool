@@ -45,6 +45,7 @@ import loci.common.services.ServiceFactory
 import loci.formats.services.OMEXMLService
 import ome.units.UNITS
 import ome.xml.meta.OMEXMLMetadata
+import ome.xml.model.primitives.Color
 import qupath.lib.common.ColorTools
 import qupath.lib.geom.Point2
 import qupath.lib.gui.helpers.dialogs.ParameterPanelFX
@@ -53,6 +54,7 @@ import qupath.lib.gui.scripting.QPEx
 import qupath.lib.objects.PathAnnotationObject
 import qupath.lib.objects.PathDetectionObject
 import qupath.lib.objects.PathROIObject
+import qupath.lib.objects.classes.PathClassFactory
 import qupath.lib.plugins.parameters.ParameterChangeListener
 import qupath.lib.plugins.parameters.ParameterList
 import qupath.lib.regions.ImagePlane
@@ -77,6 +79,34 @@ println("ROI count: " + omexml.getROICount())
 newPathObjects = []
 thinLineStrokeWidths = new HashSet<>()
 thickLineStrokeWidths = new HashSet<>()
+
+void setPathClassAndStroke(PathROIObject path, String className, Color color, Number strokeWidth) {
+    def qpColor = null
+    if (color != null) {
+        qpColor = ColorTools.makeRGBA(color.red, color.green, color.blue, color.alpha)
+    }
+
+    if (strokeWidth != null) {
+        switch (path) {
+            case PathDetectionObject:
+                thinLineStrokeWidths.add(strokeWidth)
+                break
+            case PathAnnotationObject:
+                thickLineStrokeWidths.add(strokeWidth)
+                break
+        }
+    }
+
+    if (className == null) {
+        // No class to set, so just set the color directly
+        if (qpColor != null) {
+            path.setColorRGB()
+        }
+    } else {
+        def qpClass = PathClassFactory.getPathClass(className, qpColor)
+        path.setPathClass(qpClass)
+    }
+}
 
 (0..(roiCount - 1)).each { roiIdx ->
 
@@ -118,20 +148,20 @@ thickLineStrokeWidths = new HashSet<>()
                 println(String.format("ROI %d:%d is an Elipse", roiIdx, shapeIdx))
 
                 def color = omexml.getEllipseStrokeColor(roiIdx, shapeIdx)
-                if (color != null) {
-                    path.setColorRGB(ColorTools.makeRGBA(color.red, color.green, color.blue, color.alpha))
+                def strokeWidth = null
+                if (omexml.getEllipseStrokeWidth(roiIdx, shapeIdx) != null) {
+                    strokeWidth = omexml.getEllipseStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL)
                 }
-
-                switch (path) {
-                    case PathDetectionObject:
-                        thinLineStrokeWidths.add(omexml.getEllipseStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL))
-                        break
-                    case PathAnnotationObject:
-                        thickLineStrokeWidths.add(omexml.getEllipseStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL))
-                        break
+                def className = mapAnnotations["class"]
+                if (className == null) {
+                    // If there is no explicit class name, but the ROI has a name, use that as class name
+                    className = omexml.getROIName(roiIdx)
                 }
+                setPathClassAndStroke(path, className, color, strokeWidth)
 
-                path.setLocked(omexml.getEllipseLocked(roiIdx, shapeIdx))
+                if (omexml.getEllipseLocked(roiIdx, shapeIdx) != null) {
+                    path.setLocked(omexml.getEllipseLocked(roiIdx, shapeIdx))
+                }
 
                 def c = omexml.getEllipseTheC(roiIdx, shapeIdx)
                 c = c != null ? c.numberValue.intValue() : 0
@@ -155,20 +185,20 @@ thickLineStrokeWidths = new HashSet<>()
                 println(String.format("ROI %d:%d is a Line", roiIdx, shapeIdx))
 
                 def color = omexml.getLineStrokeColor(roiIdx, shapeIdx)
-                if (color != null) {
-                    path.setColorRGB(ColorTools.makeRGBA(color.red, color.green, color.blue, color.alpha))
+                def strokeWidth = null
+                if (omexml.getLineStrokeWidth(roiIdx, shapeIdx) != null) {
+                    strokeWidth = omexml.getLineStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL)
                 }
-
-                switch (path) {
-                    case PathDetectionObject:
-                        thinLineStrokeWidths.add(omexml.getLineStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL))
-                        break
-                    case PathAnnotationObject:
-                        thickLineStrokeWidths.add(omexml.getLineStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL))
-                        break
+                def className = mapAnnotations["class"]
+                if (className == null) {
+                    // If there is no explicit class name, but the ROI has a name, use that as class name
+                    className = omexml.getROIName(roiIdx)
                 }
+                setPathClassAndStroke(path, className, color, strokeWidth)
 
-                path.setLocked(omexml.getLineLocked(roiIdx, shapeIdx))
+                if (omexml.getLineLocked(roiIdx, shapeIdx) != null) {
+                    path.setLocked(omexml.getLineLocked(roiIdx, shapeIdx))
+                }
 
                 def c = omexml.getLineTheC(roiIdx, shapeIdx)
                 c = c != null ? c.numberValue.intValue() : 0
@@ -188,20 +218,20 @@ thickLineStrokeWidths = new HashSet<>()
                 println(String.format("ROI %d:%d is a Point", roiIdx, shapeIdx))
                 
                 def color = omexml.getPointStrokeColor(roiIdx, shapeIdx)
-                if (color != null) {
-                    path.setColorRGB(ColorTools.makeRGBA(color.red, color.green, color.blue, color.alpha))
+                def strokeWidth = null
+                if (omexml.getPointStrokeWidth(roiIdx, shapeIdx) != null) {
+                    strokeWidth = omexml.getPointStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL)
                 }
-
-                switch (path) {
-                    case PathDetectionObject:
-                        thinLineStrokeWidths.add(omexml.getPointStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL))
-                        break
-                    case PathAnnotationObject:
-                        thickLineStrokeWidths.add(omexml.getPointStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL))
-                        break
+                def className = mapAnnotations["class"]
+                if (className == null) {
+                    // If there is no explicit class name, but the ROI has a name, use that as class name
+                    className = omexml.getROIName(roiIdx)
                 }
+                setPathClassAndStroke(path, className, color, strokeWidth)
 
-                path.setLocked(omexml.getPointLocked(roiIdx, shapeIdx))
+                if (omexml.getPointLocked(roiIdx, shapeIdx) != null) {
+                    path.setLocked(omexml.getPointLocked(roiIdx, shapeIdx))
+                }
 
                 def c = omexml.getPointTheC(roiIdx, shapeIdx)
                 c = c != null ? c.numberValue.intValue() : 0
@@ -219,20 +249,20 @@ thickLineStrokeWidths = new HashSet<>()
                 println(String.format("ROI %d:%d is a Polygon", roiIdx, shapeIdx))
 
                 def color = omexml.getPolygonStrokeColor(roiIdx, shapeIdx)
-                if (color != null) {
-                    path.setColorRGB(ColorTools.makeRGBA(color.red, color.green, color.blue, color.alpha))
+                def strokeWidth = null
+                if (omexml.getPolygonStrokeWidth(roiIdx, shapeIdx) != null) {
+                    strokeWidth = omexml.getPolygonStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL)
                 }
-
-                switch (path) {
-                    case PathDetectionObject:
-                        thinLineStrokeWidths.add(omexml.getPolygonStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL))
-                        break
-                    case PathAnnotationObject:
-                        thickLineStrokeWidths.add(omexml.getPolygonStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL))
-                        break
+                def className = mapAnnotations["class"]
+                if (className == null) {
+                    // If there is no explicit class name, but the ROI has a name, use that as class name
+                    className = omexml.getROIName(roiIdx)
                 }
+                setPathClassAndStroke(path, className, color, strokeWidth)
 
-                path.setLocked(omexml.getPolygonLocked(roiIdx, shapeIdx))
+                if (omexml.getPolygonLocked(roiIdx, shapeIdx) != null) {
+                    path.setLocked(omexml.getPolygonLocked(roiIdx, shapeIdx))
+                }
 
                 def c = omexml.getPolygonTheC(roiIdx, shapeIdx)
                 c = c != null ? c.numberValue.intValue() : 0
@@ -253,20 +283,20 @@ thickLineStrokeWidths = new HashSet<>()
                 println(String.format("ROI %d:%d is a Polyline", roiIdx, shapeIdx))
 
                 def color = omexml.getPolylineStrokeColor(roiIdx, shapeIdx)
-                if (color != null) {
-                    path.setColorRGB(ColorTools.makeRGBA(color.red, color.green, color.blue, color.alpha))
+                def strokeWidth = null
+                if (omexml.getPolylineStrokeWidth(roiIdx, shapeIdx) != null) {
+                    strokeWidth = omexml.getPolylineStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL)
                 }
-
-                switch (path) {
-                    case PathDetectionObject:
-                        thinLineStrokeWidths.add(omexml.getPolylineStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL))
-                        break
-                    case PathAnnotationObject:
-                        thickLineStrokeWidths.add(omexml.getPolylineStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL))
-                        break
+                def className = mapAnnotations["class"]
+                if (className == null) {
+                    // If there is no explicit class name, but the ROI has a name, use that as class name
+                    className = omexml.getROIName(roiIdx)
                 }
+                setPathClassAndStroke(path, className, color, strokeWidth)
 
-                path.setLocked(omexml.getPolylineLocked(roiIdx, shapeIdx))
+                if (omexml.getPolylineLocked(roiIdx, shapeIdx) != null) {
+                    path.setLocked(omexml.getPolylineLocked(roiIdx, shapeIdx))
+                }
 
                 def c = omexml.getPolylineTheC(roiIdx, shapeIdx)
                 c = c != null ? c.numberValue.intValue() : 0
@@ -287,20 +317,20 @@ thickLineStrokeWidths = new HashSet<>()
                 println(String.format("ROI %d:%d is a Rectangle", roiIdx, shapeIdx))
 
                 def color = omexml.getRectangleStrokeColor(roiIdx, shapeIdx)
-                if (color != null) {
-                    path.setColorRGB(ColorTools.makeRGBA(color.red, color.green, color.blue, color.alpha))
+                def strokeWidth = null
+                if (omexml.getRectangleStrokeWidth(roiIdx, shapeIdx) != null) {
+                    strokeWidth = omexml.getRectangleStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL)
                 }
-
-                switch (path) {
-                    case PathDetectionObject:
-                        thinLineStrokeWidths.add(omexml.getRectangleStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL))
-                        break
-                    case PathAnnotationObject:
-                        thickLineStrokeWidths.add(omexml.getRectangleStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL))
-                        break
+                def className = mapAnnotations["class"]
+                if (className == null) {
+                    // If there is no explicit class name, but the ROI has a name, use that as class name
+                    className = omexml.getROIName(roiIdx)
                 }
+                setPathClassAndStroke(path, className, color, strokeWidth)
 
-                path.setLocked(omexml.getRectangleLocked(roiIdx, shapeIdx))
+                if (omexml.getRectangleLocked(roiIdx, shapeIdx) != null) {
+                    path.setLocked(omexml.getRectangleLocked(roiIdx, shapeIdx))
+                }
 
                 def c = omexml.getRectangleTheC(roiIdx, shapeIdx)
                 c = c != null ? c.numberValue.intValue() : 0
