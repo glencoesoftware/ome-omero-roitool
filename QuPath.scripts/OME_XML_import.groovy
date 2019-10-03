@@ -152,7 +152,10 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
                 if (omexml.getEllipseStrokeWidth(roiIdx, shapeIdx) != null) {
                     strokeWidth = omexml.getEllipseStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL)
                 }
-                def className = mapAnnotations["class"]
+                def className = mapAnnotations["qupath:class"]
+                if (className == null) {
+                    className = mapAnnotations["class"]
+                }
                 if (className == null) {
                     // If there is no explicit class name, but the ROI has a name, use that as class name
                     className = omexml.getROIName(roiIdx)
@@ -189,7 +192,10 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
                 if (omexml.getLineStrokeWidth(roiIdx, shapeIdx) != null) {
                     strokeWidth = omexml.getLineStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL)
                 }
-                def className = mapAnnotations["class"]
+                def className = mapAnnotations["qupath:class"]
+                if (className == null) {
+                    className = mapAnnotations["class"]
+                }
                 if (className == null) {
                     // If there is no explicit class name, but the ROI has a name, use that as class name
                     className = omexml.getROIName(roiIdx)
@@ -222,7 +228,10 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
                 if (omexml.getPointStrokeWidth(roiIdx, shapeIdx) != null) {
                     strokeWidth = omexml.getPointStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL)
                 }
-                def className = mapAnnotations["class"]
+                def className = mapAnnotations["qupath:class"]
+                if (className == null) {
+                    className = mapAnnotations["class"]
+                }
                 if (className == null) {
                     // If there is no explicit class name, but the ROI has a name, use that as class name
                     className = omexml.getROIName(roiIdx)
@@ -253,7 +262,10 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
                 if (omexml.getPolygonStrokeWidth(roiIdx, shapeIdx) != null) {
                     strokeWidth = omexml.getPolygonStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL)
                 }
-                def className = mapAnnotations["class"]
+                def className = mapAnnotations["qupath:class"]
+                if (className == null) {
+                    className = mapAnnotations["class"]
+                }
                 if (className == null) {
                     // If there is no explicit class name, but the ROI has a name, use that as class name
                     className = omexml.getROIName(roiIdx)
@@ -287,7 +299,10 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
                 if (omexml.getPolylineStrokeWidth(roiIdx, shapeIdx) != null) {
                     strokeWidth = omexml.getPolylineStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL)
                 }
-                def className = mapAnnotations["class"]
+                def className = mapAnnotations["qupath:class"]
+                if (className == null) {
+                    className = mapAnnotations["class"]
+                }
                 if (className == null) {
                     // If there is no explicit class name, but the ROI has a name, use that as class name
                     className = omexml.getROIName(roiIdx)
@@ -321,7 +336,10 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
                 if (omexml.getRectangleStrokeWidth(roiIdx, shapeIdx) != null) {
                     strokeWidth = omexml.getRectangleStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL)
                 }
-                def className = mapAnnotations["class"]
+                def className = mapAnnotations["qupath:class"]
+                if (className == null) {
+                    className = mapAnnotations["class"]
+                }
                 if (className == null) {
                     // If there is no explicit class name, but the ROI has a name, use that as class name
                     className = omexml.getROIName(roiIdx)
@@ -344,10 +362,15 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
                 def width = omexml.getRectangleWidth(roiIdx, shapeIdx)
                 def height = omexml.getRectangleHeight(roiIdx, shapeIdx)
                 roi = new RectangleROI(x, y, width, height, plane)
-                
+
                 break
             default:
                 throw new Exception(String.format("ROI %d:%d is of unknown type: %s", roiIdx, shapeIdx, shapeType))
+        }
+        if (mapAnnotations["qupath:name"] != null) {
+            path.setName(mapAnnotations["qupath:name"])
+        } else if (omexml.getROIName(roiIdx) != null) {
+            path.setName(omexml.getROIName(roiIdx))
         }
         path.setROI(roi)
         mapAnnotations.keySet().each {
