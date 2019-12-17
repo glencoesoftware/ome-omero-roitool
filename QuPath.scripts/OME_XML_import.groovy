@@ -48,7 +48,7 @@ import ome.xml.meta.OMEXMLMetadata
 import ome.xml.model.primitives.Color
 import qupath.lib.common.ColorTools
 import qupath.lib.geom.Point2
-import qupath.lib.gui.helpers.dialogs.ParameterPanelFX
+import qupath.lib.gui.dialogs.ParameterPanelFX
 import qupath.lib.gui.prefs.PathPrefs
 import qupath.lib.gui.scripting.QPEx
 import qupath.lib.objects.PathAnnotationObject
