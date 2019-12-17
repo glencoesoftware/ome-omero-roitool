@@ -43,6 +43,7 @@ import ome.xml.meta.MetadataConverter;
 import ome.xml.model.OME;
 import omero.ServerError;
 import omero.api.IConfigPrx;
+import omero.model.Annotation;
 import omero.model.IObject;
 import omero.model.Roi;
 import omero.sys.ParametersI;
@@ -131,9 +132,16 @@ public class OMEOMEROConverter {
         final OMEXMLMetadata xmlMeta = omeXmlService.createOMEXMLMetadata();
         xmlMeta.createRoot();
         List<Roi> rois = getRois();
+        List<Annotation> roiAnnotations = new ArrayList<Annotation>();
+        for (final Roi roi : rois) {
+            roiAnnotations.addAll(getAnnotations(roi.getId().getValue()));
+        }
+        log.debug("Annotations: {}", roiAnnotations);
         log.info("Converting to OME-XML metadata");
         omeXmlService.convertMetadata(
                 new ROIMetadata(this::getLsid, rois), xmlMeta);
+        omeXmlService.convertMetadata(
+                new AnnotationMetadata(this::getLsid, roiAnnotations), xmlMeta);
         log.info("ROI count: {}", xmlMeta.getROICount());
         log.info("Writing OME-XML to: {}", file.getAbsolutePath());
         XMLWriter xmlWriter = new XMLWriter();
@@ -180,6 +188,20 @@ public class OMEOMEROConverter {
             rois.add((Roi) result);
         }
         return rois;
+    }
+
+    private List<Annotation> getAnnotations(long roiId) throws ServerError {
+        final List<Annotation> anns = new ArrayList<Annotation>();
+        for (final IObject result : target.getIQuery().findAllByQuery(
+                "SELECT DISTINCT a " +
+                        "FROM RoiAnnotationLink as l " +
+                        "JOIN l.child as a " +
+                        "WHERE l.parent.id = :id",
+                new ParametersI().addId(roiId),
+                ALL_GROUPS_CONTEXT)) {
+            anns.add((Annotation) result);
+        };
+        return anns;
     }
 
     public void close()
