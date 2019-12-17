@@ -34,6 +34,10 @@
 
 
 
+import ij.plugin.filter.ThresholdToSelection
+import ij.process.ByteProcessor
+import ij.process.ImageProcessor
+import java.util.Base64
 import javafx.application.Platform
 import javafx.embed.swing.JFXPanel
 import javafx.geometry.Insets
@@ -41,11 +45,13 @@ import javafx.scene.Scene
 import javafx.scene.control.Button
 import javafx.scene.layout.BorderPane
 import javafx.stage.Stage
+import loci.common.RandomAccessInputStream
 import loci.common.services.ServiceFactory
 import loci.formats.services.OMEXMLService
 import ome.units.UNITS
 import ome.xml.meta.OMEXMLMetadata
 import ome.xml.model.primitives.Color
+import qupath.imagej.tools.ROIConverterIJ
 import qupath.lib.common.ColorTools
 import qupath.lib.geom.Point2
 import qupath.lib.gui.dialogs.ParameterPanelFX
@@ -364,22 +370,57 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
                 roi = new RectangleROI(x, y, width, height, plane)
 
                 break
+            case "Mask":
+                println(String.format("ROI %d:%d is a Mask", roiIdx, shapeIdx))
+
+                def x = omexml.getMaskX(roiIdx, shapeIdx)
+                def y = omexml.getMaskY(roiIdx, shapeIdx)
+                def width = omexml.getMaskWidth(roiIdx, shapeIdx).intValue()
+                def height = omexml.getMaskHeight(roiIdx, shapeIdx).intValue()
+                def binData = omexml.getMaskBinData(roiIdx, shapeIdx)
+
+                def bits = Base64.getDecoder().decode(binData)
+                def stream = new RandomAccessInputStream(bits)
+                def bytes = new byte[stream.length() * 8]
+                (0..(bytes.length - 1)).each { bitIndex ->
+                    bytes[bitIndex] = stream.readBits(1) * Byte.MAX_VALUE;
+                }
+
+                // see https://petebankhead.github.io/qupath/scripting/2018/03/13/script-export-import-binary-masks.html
+                def bp = new ByteProcessor(width, height, bytes)
+                bp.setThreshold(Byte.MAX_VALUE - 1, 255, ImageProcessor.NO_LUT_UPDATE)
+                def ijROI = new ThresholdToSelection().convert(bp)
+
+                if (ijROI != null) {
+                    def c = omexml.getMaskTheC(roiIdx, shapeIdx)
+                    c = c != null ? c.numberValue.intValue() : 0
+                    def z = omexml.getMaskTheZ(roiIdx, shapeIdx)
+                    z = z != null ? z.numberValue.intValue() : 0
+                    def t = omexml.getMaskTheT(roiIdx, shapeIdx)
+                    t = t != null ? t.numberValue.intValue() : 0
+
+                    roi = ROIConverterIJ.convertToAreaROI(ijROI, x, y, 1, c, z, t);
+                }
+
+                break
             default:
                 throw new Exception(String.format("ROI %d:%d is of unknown type: %s", roiIdx, shapeIdx, shapeType))
         }
-        if (mapAnnotations["qupath:name"] != null) {
-            path.setName(mapAnnotations["qupath:name"])
-        } else if (omexml.getROIName(roiIdx) != null) {
-            path.setName(omexml.getROIName(roiIdx))
-        }
-        path.setROI(roi)
-        mapAnnotations.keySet().each {
-            if (it.toString().startsWith("qupath:metadata:")) {
-                path.storeMetadataValue(it.toString().replaceFirst(/qupath:metadata:/, ""),
-                        mapAnnotations[it].toString())
+        if (roi != null) {
+            if (mapAnnotations["qupath:name"] != null) {
+                path.setName(mapAnnotations["qupath:name"])
+            } else if (omexml.getROIName(roiIdx) != null) {
+                path.setName(omexml.getROIName(roiIdx))
             }
+            path.setROI(roi)
+            mapAnnotations.keySet().each {
+                if (it.toString().startsWith("qupath:metadata:")) {
+                    path.storeMetadataValue(it.toString().replaceFirst(/qupath:metadata:/, ""),
+                            mapAnnotations[it].toString())
+                }
+            }
+            newPathObjects.add(path)
         }
-        newPathObjects.add(path)
     }
 }
 QPEx.getCurrentHierarchy().addPathObjects(newPathObjects)
