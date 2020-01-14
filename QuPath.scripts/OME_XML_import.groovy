@@ -100,7 +100,7 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
     if (className == null) {
         // No class to set, so just set the color directly
         if (qpColor != null) {
-            path.setColorRGB()
+            path.setColorRGB(qpColor)
         }
     } else {
         def qpClass = PathClassFactory.getPathClass(className, qpColor)
