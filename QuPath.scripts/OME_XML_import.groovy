@@ -85,6 +85,7 @@ println("ROI count: " + omexml.getROICount())
 newPathObjects = []
 thinLineStrokeWidths = new HashSet<>()
 thickLineStrokeWidths = new HashSet<>()
+pathClasses = new HashSet<>()
 
 void setPathClassAndStroke(PathROIObject path, String className, Color color, Number strokeWidth) {
     def qpColor = null
@@ -109,8 +110,12 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
             path.setColorRGB(qpColor)
         }
     } else {
+        // set the class on the object
         def qpClass = PathClassFactory.getPathClass(className, qpColor)
         path.setPathClass(qpClass)
+
+        // update list of unique classes so that the UI can be updated later
+        pathClasses.add(qpClass);
     }
 }
 
@@ -424,6 +429,20 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
     }
 }
 QPEx.getCurrentHierarchy().addPathObjects(newPathObjects)
+updatePathClasses()
+
+// make sure each object class is added to the list in the GUI
+void updatePathClasses() {
+    if (!Platform.isFxApplicationThread()) {
+        Platform.runLater({ updatePathClasses() })
+        return
+    }
+
+    def classList = qupath.getAvailablePathClasses()
+    pathClasses.each { qpClass ->
+        classList.add(qpClass)
+    }
+}
 
 void chooseLineWidths() {
 
