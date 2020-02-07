@@ -48,8 +48,10 @@ import javafx.stage.Stage
 import loci.common.RandomAccessInputStream
 import loci.common.services.ServiceFactory
 import loci.formats.services.OMEXMLService
+import ome.codecs.ZlibCodec
 import ome.units.UNITS
 import ome.xml.meta.OMEXMLMetadata
+import ome.xml.model.enums.Compression
 import ome.xml.model.primitives.Color
 import qupath.imagej.tools.ROIConverterIJ
 import qupath.lib.common.ColorTools
@@ -383,10 +385,14 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
                 def width = omexml.getMaskWidth(roiIdx, shapeIdx).intValue()
                 def height = omexml.getMaskHeight(roiIdx, shapeIdx).intValue()
                 def binData = omexml.getMaskBinData(roiIdx, shapeIdx)
+                def compression = omexml.getMaskBinDataCompression(roiIdx, shapeIdx)
 
                 def bits = Base64.getDecoder().decode(binData)
+                if (compression == Compression.ZLIB) {
+                    bits = new ZlibCodec().decompress(bits, null)
+                }
                 def stream = new RandomAccessInputStream(bits)
-                def bytes = new byte[stream.length() * 8]
+                def bytes = new byte[width * height]
                 (0..(bytes.length - 1)).each { bitIndex ->
                     bytes[bitIndex] = stream.readBits(1) * Byte.MAX_VALUE;
                 }
