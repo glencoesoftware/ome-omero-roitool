@@ -446,7 +446,9 @@ void updatePathClasses() {
 
     def classList = qupath.getAvailablePathClasses()
     pathClasses.each { qpClass ->
-        classList.add(qpClass)
+        if (!classList.contains(qpClass)) {
+            classList.add(qpClass)
+        }
     }
 }
 
