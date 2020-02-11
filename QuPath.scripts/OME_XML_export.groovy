@@ -67,10 +67,12 @@ static void setCommonProperties(Shape shape, PathROIObject path, qupath.lib.roi.
 
     // Unpack the color
     def packedColor = path.colorRGB
-    if (packedColor == null && path.pathClass != null) {
-        packedColor = path.pathClass.color
-    } else {
-        packedColor = PathPrefs.getColorDefaultAnnotations()
+    if (packedColor == null) {
+        if (path.pathClass != null) {
+            packedColor = path.pathClass.color
+        } else {
+            packedColor = PathPrefs.getColorDefaultAnnotations()
+        }
     }
     if (packedColor != null) {
         def color = new Color(ColorTools.red(packedColor),
@@ -122,12 +124,13 @@ rois.eachWithIndex { PathROIObject path, int i ->
         omeROI.setName(path.pathClass.name)
     }
 
+    def union = new Union()
+
     // Instantiate the class of the shape from the type of ROI and set class specific properties
     switch (roi) {
         case EllipseROI:
             def ellipse = roi as EllipseROI
             def shape = new Ellipse()
-            def union = new Union()
             shape.setID(shapeID)
             shape.setX(ellipse.getCentroidX())
             shape.setY(ellipse.getCentroidY())
@@ -135,12 +138,10 @@ rois.eachWithIndex { PathROIObject path, int i ->
             shape.setRadiusY(ellipse.getBoundsHeight() / 2)
             setCommonProperties(shape, path, roi)
             union.addShape(shape as Shape)
-            omeROI.setUnion(union)
             break
         case LineROI:
             def line = roi as LineROI
             def shape = new Line()
-            def union = new Union()
             shape.setID(shapeID)
             shape.setX1(line.x1)
             shape.setY1(line.y1)
@@ -151,11 +152,9 @@ rois.eachWithIndex { PathROIObject path, int i ->
             // shape.setMarkerEnd()
             setCommonProperties(shape, path, roi)
             union.addShape(shape as Shape)
-            omeROI.setUnion(union)
             break
         case PointsROI:
             def points = roi as PointsROI
-            def union = new Union()
             points.getPointList().eachWithIndex { point, pointidx ->
                 def shape = new Point()
                 shape.setID(shapeID + "." + pointidx)
@@ -164,34 +163,37 @@ rois.eachWithIndex { PathROIObject path, int i ->
                 setCommonProperties(shape, path, roi)
                 union.addShape(shape)
             }
-            omeROI.setUnion(union)
             break
         case PolygonROI:
             def polygon = roi as PolygonROI
             def shape = new Polygon()
-            def union = new Union()
-            def points = polygon.getPolygonPoints().collect { String.format("%f,%f", it.getX(), it.getY()) }.join(" ")
+            def points = polygon.getAllPoints().collect { String.format("%f,%f", it.getX(), it.getY()) }.join(" ")
             shape.setID(shapeID)
             shape.setPoints(points)
             setCommonProperties(shape, path, roi)
             union.addShape(shape)
-            omeROI.setUnion(union)
+            break
+        case AreaROI:
+            def polygon = roi as AreaROI
+            def shape = new Polygon()
+            def points = polygon.getAllPoints().collect { String.format("%f,%f", it.getX(), it.getY()) }.join(" ")
+            shape.setID(shapeID)
+            shape.setPoints(points)
+            setCommonProperties(shape, path, roi)
+            union.addShape(shape)
             break
         case PolylineROI:
             def polyline = roi as PolylineROI
             def shape = new Polyline()
-            def union = new Union()
-            def points = polyline.getPolygonPoints().collect { String.format("%f,%f", it.getX(), it.getY()) }.join(" ")
+            def points = polyline.getAllPoints().collect { String.format("%f,%f", it.getX(), it.getY()) }.join(" ")
             shape.setID(shapeID)
             shape.setPoints(points)
             setCommonProperties(shape, path, roi)
             union.addShape(shape as Shape)
-            omeROI.setUnion(union)
             break
         case RectangleROI:
             def rect = roi as RectangleROI
             def shape = new Rectangle()
-            def union = new Union()
             shape.setID(shapeID)
             shape.setX(rect.x)
             shape.setY(rect.y)
@@ -199,8 +201,13 @@ rois.eachWithIndex { PathROIObject path, int i ->
             shape.setHeight(rect.getBoundsHeight())
             setCommonProperties(shape, path, roi)
             union.addShape(shape as Shape)
-            omeROI.setUnion(union)
             break
+        default:
+            print("Unsupported ROI type: " + roi)
+    }
+
+    if (union.sizeOfShapeList() > 0) {
+        omeROI.setUnion(union)
     }
 
     // Map Annotation
