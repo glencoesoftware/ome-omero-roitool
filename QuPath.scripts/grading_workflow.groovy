@@ -20,14 +20,16 @@
  *
  * QuPath OME-XML Importer
  *
- * This script will import ROIs from an OME-XML file and generate detections and
- * annotations for the current image opened in QuPath
+ * This script will import ROIs from an OME-XML file and
+ * set up some custom annotation classes
  *
  * Instructions:
  *   - Open the image to be annotated in QuPath
  *   - Open this file in the QuPath "Script editor"
  *   - Choose "Run" from the Run menu
+ *   - Click "Yes" to clear the annotation class list
  *   - When prompted, choose the OME-XML import script
+ *   - Choose the OME-XML ROI file
  */
 
 import javafx.application.Platform
