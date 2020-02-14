@@ -48,8 +48,10 @@ import javafx.stage.Stage
 import loci.common.RandomAccessInputStream
 import loci.common.services.ServiceFactory
 import loci.formats.services.OMEXMLService
+import ome.codecs.ZlibCodec
 import ome.units.UNITS
 import ome.xml.meta.OMEXMLMetadata
+import ome.xml.model.enums.Compression
 import ome.xml.model.primitives.Color
 import qupath.imagej.tools.ROIConverterIJ
 import qupath.lib.common.ColorTools
@@ -85,6 +87,7 @@ println("ROI count: " + omexml.getROICount())
 newPathObjects = []
 thinLineStrokeWidths = new HashSet<>()
 thickLineStrokeWidths = new HashSet<>()
+pathClasses = new HashSet<>()
 
 void setPathClassAndStroke(PathROIObject path, String className, Color color, Number strokeWidth) {
     def qpColor = null
@@ -109,8 +112,12 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
             path.setColorRGB(qpColor)
         }
     } else {
+        // set the class on the object
         def qpClass = PathClassFactory.getPathClass(className, qpColor)
         path.setPathClass(qpClass)
+
+        // update list of unique classes so that the UI can be updated later
+        pathClasses.add(qpClass);
     }
 }
 
@@ -378,10 +385,14 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
                 def width = omexml.getMaskWidth(roiIdx, shapeIdx).intValue()
                 def height = omexml.getMaskHeight(roiIdx, shapeIdx).intValue()
                 def binData = omexml.getMaskBinData(roiIdx, shapeIdx)
+                def compression = omexml.getMaskBinDataCompression(roiIdx, shapeIdx)
 
                 def bits = Base64.getDecoder().decode(binData)
+                if (compression == Compression.ZLIB) {
+                    bits = new ZlibCodec().decompress(bits, null)
+                }
                 def stream = new RandomAccessInputStream(bits)
-                def bytes = new byte[stream.length() * 8]
+                def bytes = new byte[width * height]
                 (0..(bytes.length - 1)).each { bitIndex ->
                     bytes[bitIndex] = stream.readBits(1) * Byte.MAX_VALUE;
                 }
@@ -424,6 +435,22 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
     }
 }
 QPEx.getCurrentHierarchy().addPathObjects(newPathObjects)
+updatePathClasses()
+
+// make sure each object class is added to the list in the GUI
+void updatePathClasses() {
+    if (!Platform.isFxApplicationThread()) {
+        Platform.runLater({ updatePathClasses() })
+        return
+    }
+
+    def classList = qupath.getAvailablePathClasses()
+    pathClasses.each { qpClass ->
+        if (!classList.contains(qpClass)) {
+            classList.add(qpClass)
+        }
+    }
+}
 
 void chooseLineWidths() {
 
