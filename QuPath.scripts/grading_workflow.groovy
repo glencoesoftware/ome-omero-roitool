@@ -24,6 +24,7 @@
  * set up some custom annotation classes
  *
  * Instructions:
+ *   - Edit the grade classes if needed (look for "EDIT HERE")
  *   - Open the image to be annotated in QuPath
  *   - Open this file in the QuPath "Script editor"
  *   - Choose "Run" from the Run menu
@@ -72,9 +73,16 @@ void gradingWorkflow() {
     // add empty classes for grading
 
     def classList = qupath.getAvailablePathClasses()
-    def gradeCount = 5
-    (0..(gradeCount - 1)).each { grade ->
-        def qpClass = PathClassFactory.getPathClass("Grade " + grade, null)
+    // EDIT HERE: grade classes are specified by the "grades" array
+    def grades = [
+        "Grade 0",
+        "Grade 1",
+        "Grade 2",
+        "Grade 3",
+        "Grade 4"
+    ]
+    grades.each { grade ->
+        def qpClass = PathClassFactory.getPathClass(grade, null)
         classList.add(qpClass)
     }
 }
