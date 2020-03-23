@@ -76,6 +76,8 @@ factory = new ServiceFactory()
 service = factory.getInstance(OMEXMLService.class)
 OMEXMLMetadata omexml = service.createOMEXMLMetadata(xml)
 
+nameIndexes = new HashMap<String, Integer>();
+
 roiCount = omexml.getROICount()
 
 if (roiCount < 1) {
@@ -420,8 +422,11 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
         if (roi != null) {
             if (mapAnnotations["qupath:name"] != null) {
                 path.setName(mapAnnotations["qupath:name"])
-            } else if (omexml.getROIName(roiIdx) != null) {
-                path.setName(omexml.getROIName(roiIdx))
+            } else {
+                def roiName = omexml.getROIName(roiIdx);
+                if (roiName != null) {
+                    path.setName(String.format("%s #%d", roiName, getIndex(roiName)));
+                }
             }
             path.setROI(roi)
             mapAnnotations.keySet().each {
@@ -450,6 +455,16 @@ void updatePathClasses() {
             classList.add(qpClass)
         }
     }
+}
+
+Integer getIndex(String roiName) {
+    def index = nameIndexes.get(roiName);
+    if (index != null) {
+        nameIndexes.put(roiName, index + 1);
+        return index;
+    }
+    nameIndexes.put(roiName, 2);
+    return 1;
 }
 
 void chooseLineWidths() {
