@@ -82,7 +82,7 @@ void gradingWorkflow() {
         "Grade 4"
     ]
     grades.each { grade ->
-        def qpClass = PathClassFactory.getPathClass(grade, null)
+        def qpClass = PathClassFactory.getPathClass(grade)
         classList.add(qpClass)
     }
 }
