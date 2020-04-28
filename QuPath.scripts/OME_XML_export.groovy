@@ -40,6 +40,7 @@ import ome.xml.model.enums.FillRule
 import ome.xml.model.primitives.Color
 import ome.xml.model.primitives.NonNegativeInteger
 import qupath.lib.common.ColorTools
+import qupath.lib.gui.dialogs.Dialogs
 import qupath.lib.gui.prefs.PathPrefs
 import qupath.lib.gui.scripting.QPEx
 import qupath.lib.objects.PathROIObject
@@ -71,7 +72,7 @@ static void setCommonProperties(Shape shape, PathROIObject path, qupath.lib.roi.
         if (path.pathClass != null) {
             packedColor = path.pathClass.color
         } else {
-            packedColor = PathPrefs.getColorDefaultAnnotations()
+            packedColor = PathPrefs.colorDefaultObjectsProperty().get()
         }
     }
     if (packedColor != null) {
@@ -101,9 +102,9 @@ static void setCommonProperties(Shape shape, PathROIObject path, qupath.lib.roi.
     // and another for detections. We'll store the stroke width on each ROI, but when loading an OME-XML
     // the stroke width of last ROI loaded will be used to set the system property.
     if (path.isAnnotation()) {
-        shape.setStrokeWidth(new Length(PathPrefs.getThickStrokeThickness(), UNITS.PIXEL))
+        shape.setStrokeWidth(new Length(PathPrefs.annotationStrokeThicknessProperty().get(), UNITS.PIXEL))
     } else if (path.isDetection()) {
-        shape.setStrokeWidth(new Length(PathPrefs.getThinStrokeThickness(), UNITS.PIXEL))
+        shape.setStrokeWidth(new Length(PathPrefs.detectionStrokeThicknessProperty().get(), UNITS.PIXEL))
     }
 
     // Note: Currently, QuPath does not allow for dashed lines
@@ -237,7 +238,6 @@ rois.eachWithIndex { PathROIObject path, int i ->
 
 ome.setStructuredAnnotations(structuredAnnotations);
 
-qupath = QPEx.getQuPath()
-file = qupath.getDialogHelper().promptToSaveFile("Choose OME-XML export location", null, null, "OME-XML", ".ome.xml")
+file = Dialogs.promptToSaveFile("Choose OME-XML export location", null, null, "OME-XML", ".ome.xml")
 xmlWriter = new XMLWriter();
 xmlWriter.writeFile(file, ome, false);
