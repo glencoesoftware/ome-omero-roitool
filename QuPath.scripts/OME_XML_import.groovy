@@ -326,14 +326,14 @@ qupath.lib.roi.interfaces.ROI importShape(PathROIObject path, int roiIdx, int sh
     // if this ROI represents a detection and has exactly 2 shapes,
     // then treat as a single cell where the first shape is the cell boundary
     // and the second shape is the cell nucleus
-    if (mapAnnotations["qupath:is-detection"] && effectiveCount == 2) {
+    if (mapAnnotations["qupath:is-detection"] == "true" && effectiveCount == 2) {
        effectiveCount = 1
     }
 
     (0..(effectiveCount - 1)).each { shapeIdx ->
 
         PathROIObject path
-        if (mapAnnotations["qupath:is-detection"]) {
+        if (mapAnnotations["qupath:is-detection"] == "true") {
             if (omexml.getShapeCount(roiIdx) == 2) {
                 path = new PathCellObject()
             } else {
