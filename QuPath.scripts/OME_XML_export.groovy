@@ -44,6 +44,7 @@ import qupath.lib.common.GeneralTools
 import qupath.lib.gui.dialogs.Dialogs
 import qupath.lib.gui.prefs.PathPrefs
 import qupath.lib.gui.scripting.QPEx
+import qupath.lib.objects.PathCellObject
 import qupath.lib.objects.PathROIObject
 import qupath.lib.roi.*
 
@@ -119,22 +120,7 @@ static void setCommonProperties(Shape shape, PathROIObject path, qupath.lib.roi.
     // shape.setStrokeDashArray()
 }
 
-rois.eachWithIndex { PathROIObject path, int i ->
-    def roi = path.getROI()
-    print(String.format("ROI type: %s", roi.class))
-    def mapAnnotationID = String.format("MapAnnotation-%s", i)
-    def shapeID = String.format("Shape:%s", i)
-    def roiID = String.format("ROI-%s", i)
-
-    // New ROI
-    def omeROI = new ROI()
-    omeROI.setID(roiID)
-    if (path.pathClass != null) {
-        omeROI.setName(path.pathClass.name)
-    }
-
-    def union = new Union()
-
+void addShapeToUnion(qupath.lib.roi.interfaces.ROI roi, Union union, String shapeID, PathROIObject path) {
     // Instantiate the class of the shape from the type of ROI and set class specific properties
     switch (roi) {
         case EllipseROI:
@@ -213,6 +199,35 @@ rois.eachWithIndex { PathROIObject path, int i ->
             break
         default:
             print("Unsupported ROI type: " + roi)
+    }
+}
+
+
+rois.eachWithIndex { PathROIObject path, int i ->
+    def roi = path.getROI()
+    print(String.format("ROI type: %s", roi.class))
+    def mapAnnotationID = String.format("MapAnnotation-%s", i)
+    def shapeID = String.format("Shape:%s:%s", i, 0)
+    def roiID = String.format("ROI-%s", i)
+
+    // New ROI
+    def omeROI = new ROI()
+    omeROI.setID(roiID)
+    if (path.pathClass != null) {
+        omeROI.setName(path.pathClass.name)
+    }
+
+    def union = new Union()
+
+    addShapeToUnion(roi, union, shapeID, path)
+
+    // PathCellObjects are the result of running a cell detection
+    // the result of getROI is the cell boundary
+    // the nucleus is defined as a separate ROI and should be included
+    // in the OME ROI as a separate shape
+    if (path instanceof PathCellObject) {
+        shapeID = String.format("Shape:%s:%s", i, 1);
+        addShapeToUnion(path.getNucleusROI(), union, shapeID, path)
     }
 
     if (union.sizeOfShapeList() > 0) {
