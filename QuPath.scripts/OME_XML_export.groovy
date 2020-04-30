@@ -40,11 +40,19 @@ import ome.xml.model.enums.FillRule
 import ome.xml.model.primitives.Color
 import ome.xml.model.primitives.NonNegativeInteger
 import qupath.lib.common.ColorTools
+import qupath.lib.common.GeneralTools
 import qupath.lib.gui.dialogs.Dialogs
 import qupath.lib.gui.prefs.PathPrefs
 import qupath.lib.gui.scripting.QPEx
 import qupath.lib.objects.PathROIObject
 import qupath.lib.roi.*
+
+// first check the version; only 0.2.0-m10 and later are supported
+version = GeneralTools.getVersion()
+versionTokens = version.split("-")
+if (!versionTokens[0].equals("0.2.0") || (versionTokens.length == 2 && Integer.parseInt(versionTokens[1].substring(1)) < 10)) {
+    throw new RuntimeException("Unsupported QuPath version: " + version)
+}
 
 ome = new OME()
 structuredAnnotations = new StructuredAnnotations()
