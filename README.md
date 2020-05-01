@@ -6,7 +6,7 @@ Annotation converter to and from OME-XML
 Requirements
 ============
 
-* OMERO 5.4.x+
+* OMERO 5.6.x+
 * Java 8+
 
 Workflow
