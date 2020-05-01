@@ -1,0 +1,12 @@
+version: 0.2.1.{build}
+
+build: off
+
+build_script:
+  - gradlew build
+
+after_test:
+  - gradlew distZip
+
+artifacts:
+  - path: 'build\distributions\*.zip'
