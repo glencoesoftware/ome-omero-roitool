@@ -82,7 +82,7 @@ public abstract class OMEROCommand
         OMEOMEROConverter converter = new OMEOMEROConverter(imageId);
         if (username != null)
         {
-            converter.initialize(username, password, server, port);
+            converter.initialize(username, password, server, port, false);
         }
         else if (sessionKey != null)
         {
