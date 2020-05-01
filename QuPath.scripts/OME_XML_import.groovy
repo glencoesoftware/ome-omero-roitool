@@ -56,6 +56,7 @@ import ome.xml.model.primitives.Color
 import qupath.imagej.tools.ROIConverterIJ
 import qupath.lib.common.ColorTools
 import qupath.lib.geom.Point2
+import qupath.lib.gui.dialogs.Dialogs
 import qupath.lib.gui.dialogs.ParameterPanelFX
 import qupath.lib.gui.prefs.PathPrefs
 import qupath.lib.gui.scripting.QPEx
@@ -69,7 +70,7 @@ import qupath.lib.regions.ImagePlane
 import qupath.lib.roi.*
 
 qupath = QPEx.getQuPath()
-file = qupath.getDialogHelper().promptForFile("Choose an OME-XML to import", null, "image.ome.xml", ".ome.xml")
+file = Dialogs.promptForFile("Choose an OME-XML to import", null, "image.ome.xml", ".ome.xml")
 xml = file.readLines().join("\n")
 
 factory = new ServiceFactory()
