@@ -31,14 +31,20 @@
  */
 
 
-
+import loci.formats.gui.AWTImageTools
+import ome.codecs.Base64Codec
+import ome.codecs.BitWriter
+import ome.codecs.Codec
+import ome.codecs.ZlibCodec
 import ome.specification.XMLWriter
 import ome.units.UNITS
 import ome.units.quantity.Length
 import ome.xml.model.*
+import ome.xml.model.enums.Compression
 import ome.xml.model.enums.FillRule
 import ome.xml.model.primitives.Color
 import ome.xml.model.primitives.NonNegativeInteger
+import ome.xml.model.primitives.NonNegativeLong
 import qupath.lib.common.ColorTools
 import qupath.lib.common.GeneralTools
 import qupath.lib.gui.dialogs.Dialogs
@@ -197,6 +203,54 @@ void addShapeToUnion(qupath.lib.roi.interfaces.ROI roi, Union union, String shap
             setCommonProperties(shape, path, roi)
             union.addShape(shape as Shape)
             break
+        case GeometryROI:
+            // arbitrary geometry resulting from wand tool
+            // may or may not represent distinct polygons
+            // easiest way to represent is as a mask
+            def geom = roi as GeometryROI
+
+            // construct a blank image matching the ROI bounding box
+            width = geom.getBoundsWidth()
+            height = geom.getBoundsWidth()
+            img = new BufferedImage(width as int, height as int, BufferedImage.TYPE_BYTE_GRAY)
+
+            // draw the shape onto the image
+            graphics = img.createGraphics()
+            graphics.setColor(java.awt.Color.WHITE)
+            graphics.draw(geom.getShape())
+
+            // convert the image to a binary mask
+            pixels = AWTImageTools.getBytes(img, false)
+            nBytes = pixels.length / 8
+            if (nBytes * 8 < pixels.length) {
+                nBytes++
+            }
+            bits = new BitWriter(nBytes as int)
+            for (byte b : pixels) {
+                bits.write(b == 0 ? 0 : 1, 1)
+            }
+
+            encoded = bits.toByteArray()
+            encoded = new ZlibCodec().compress(encoded, null)
+
+            encoder = new Base64Codec()
+            encoded = encoder.compress(encoded, null)
+
+            binData = new BinData()
+            binData.setLength(new NonNegativeLong(Long.valueOf(encoded.length)))
+            binData.setCompression(Compression.ZLIB)
+            binData.setBase64Binary(encoded)
+
+            def mask = new Mask()
+            mask.setID(shapeID)
+            mask.setX(geom.getBoundsX())
+            mask.setY(geom.getBoundsY())
+            mask.setWidth(geom.getBoundsWidth())
+            mask.setHeight(geom.getBoundsHeight())
+            mask.setBinData(binData)
+
+            union.addShape(mask as Shape)
+            break
         default:
             print("Unsupported ROI type: " + roi)
     }
@@ -226,7 +280,7 @@ rois.eachWithIndex { PathROIObject path, int i ->
     // the nucleus is defined as a separate ROI and should be included
     // in the OME ROI as a separate shape
     if (path instanceof PathCellObject) {
-        shapeID = String.format("Shape:%s:%s", i, 1);
+        shapeID = String.format("Shape:%s:%s", i, 1)
         addShapeToUnion(path.getNucleusROI(), union, shapeID, path)
     }
 
