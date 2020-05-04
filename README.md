@@ -1,19 +1,25 @@
 OME and OMERO ROI tool
 ======================
 
-Annotation converter to and from OME-XML
+Annotation converter to and from OME-XML. This repository contains two distinct but related tools.
 
-Requirements
-============
+```ome-omero-roitool``` is a command line tool for importing or exporting ROIs associated with a
+particular OMERO Image ID.  The input (for import) and output (for export) is an OME-XML file
+with ROIs defined as described in https://docs.openmicroscopy.org/ome-model/6.1.0/developers/roi.html
+
+A set of scripts for importing and exporting OME-XML ROIs within QuPath are in ```src/dist/QuPath.scripts```.
+
+
+# ome-omero-roitool
+
+## Requirements
 
 * OMERO 5.6.x+
 * Java 8+
 
-Workflow
-========
+## Workflow
 
-ROI import
-----------
+### ROI import
 
 ```
 $ ome-omero-roitool import --help
@@ -36,8 +42,7 @@ Import ROIs from OME-XML file into an OMERO server
                            OMERO user name
 ```
 
-Example
--------
+#### Example
 
 ```
 $ ome-omero-roitool import --server localhost --username test --password test 30101 test.ome.xml
@@ -61,8 +66,7 @@ $ ome-omero-roitool import --server localhost --username test --password test 30
 13:10:41.509 [main] INFO com.glencoesoftware.roitool.ROIMetadataStoreClient - Saved ROI with ID: 534878
 ```
 
-ROI export
-----------
+### ROI export
 
 ```
 $ ome-omero-roitool export --help
@@ -84,8 +88,7 @@ Export ROIs to an OME-XML file from an OMERO server
                            OMERO user name
 ```
 
-Example
--------
+#### Example
 
 ```
 $ ome-omero-roitool import --server localhost --username test --password test 30101 test.ome.xml
@@ -98,8 +101,7 @@ $ ome-omero-roitool import --server localhost --username test --password test 30
 11:43:53.286 [main] INFO com.glencoesoftware.roitool.OMEOMEROConverter - Writing OME-XML to: test.ome.xml
 ```
 
-Development Installation
-========================
+## Development Installation
 
 1. Clone the repository::
 
@@ -111,17 +113,56 @@ Development Installation
     cd build/install
     ...
 
-Running Tests
-=============
+## Running Tests
 
 Using Gradle run the unit tests:
 
     ./gradlew test
 
-Eclipse Configuration
-=====================
+## Eclipse Configuration
 
 1. Run the Gradle Eclipse task::
 
     ./gradlew eclipse
 
+
+# QuPath scripts
+
+## Requirements
+
+* QuPath 0.2.0-m10 or later
+
+## Installation
+
+Drag and drop the import or export .groovy file onto the QuPath window.
+For frequent use, set the QuPath shared scripts directory (```Automate > Shared scripts... > Set script directory...```)
+and then copy all *.groovy files to the chosen directory.  The scripts can then be accessed via
+```Automate > Shared scripts...``` in QuPath.
+
+## Import OME-XML ROIs
+
+1. Open an image in QuPath.
+2. Open the ```OME_XML_import.groovy``` script in QuPath and select ```Run```.
+3. Choose the OME-XML file to import.
+4. Wait a bit; the import is fast for a small number of ROIs, but can take minutes if thousands of ROIs are present.
+5. Click the ```Annotations``` tab in QuPath to see a list of imported ROIs.
+
+The chosen OME-XML file is expected to contain only ROIs and optionally MapAnnotations.  Other data in the file will be ignored.
+
+## Export OME-XML ROIs
+
+1. Open an image in QuPath.
+2. Draw or import annotations, or create a cell detection.
+3. Open the ```OME_XML_export.groovy``` script in QuPath and select ```Run```.
+4. Choose the output OME-XML file.
+
+Most QuPath objects have a direct counterpart in the OME-XML schema.  The exception is geometry ROIs created by the wand and brush tools.
+These will be represented in OME-XML as masks covering the bounding box of the ROI (not the whole image).  Some loss of precision may occur
+when exporting geometry ROIs.
+
+## Grading workflow
+
+The ```grading_workflow.groovy``` script shows an example of how to build upon the import script to provide additional features.
+In this case, five new QuPath annotation classes are defined (```Grade 0``` to ```Grade 4```), and all other classes are optionally
+removed from the list.  ROIs are imported from the chosen OME-XML file by calling ```OME_XML_import.groovy```, and can then be
+easily re-classified into the new grade classes.
