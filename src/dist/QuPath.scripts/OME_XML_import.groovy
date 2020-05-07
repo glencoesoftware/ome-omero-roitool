@@ -136,7 +136,7 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Le
 // convert the OME-XML shape with the given indexes to a QuPath ROI
 qupath.lib.roi.interfaces.ROI importShape(PathROIObject path, int roiIdx, int shapeIdx, String className) {
     def shapeType = omexml.getShapeType(roiIdx, shapeIdx)
-    println(String.format("ROI %d:%d is an %s", roiIdx, shapeIdx, shapeType))
+    println(String.format("ROI %d:%d has type '%s'", roiIdx, shapeIdx, shapeType))
 
     def locked = null
     def roi = null
@@ -282,7 +282,7 @@ qupath.lib.roi.interfaces.ROI importShape(PathROIObject path, int roiIdx, int sh
                 def z = getValue(omexml.getMaskTheZ(roiIdx, shapeIdx))
                 def t = getValue(omexml.getMaskTheT(roiIdx, shapeIdx))
 
-                roi = ROIConverterIJ.convertToAreaROI(ijROI, x, y, 1, c, z, t);
+                roi = ROIConverterIJ.convertToAreaROI(ijROI, -1 * x, -1 * y, 1, c, z, t)
             }
 
             break

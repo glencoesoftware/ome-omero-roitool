@@ -31,6 +31,7 @@
  */
 
 
+import java.awt.geom.AffineTransform
 import loci.formats.gui.AWTImageTools
 import ome.codecs.Base64Codec
 import ome.codecs.BitWriter
@@ -210,14 +211,22 @@ void addShapeToUnion(qupath.lib.roi.interfaces.ROI roi, Union union, String shap
             def geom = roi as GeometryROI
 
             // construct a blank image matching the ROI bounding box
+            originX = geom.getBoundsX()
+            originY = geom.getBoundsY()
             width = geom.getBoundsWidth()
             height = geom.getBoundsWidth()
             img = new BufferedImage(width as int, height as int, BufferedImage.TYPE_BYTE_GRAY)
 
+
             // draw the shape onto the image
             graphics = img.createGraphics()
             graphics.setColor(java.awt.Color.WHITE)
-            graphics.draw(geom.getShape())
+
+            // make sure to translate shape so that it is within the bounds of the mask
+            drawableShape = geom.getShape()
+            transform = AffineTransform.getTranslateInstance(-1 * originX, -1 * originY)
+            drawableShape.transform(transform)
+            graphics.draw(drawableShape)
 
             // convert the image to a binary mask
             pixels = AWTImageTools.getBytes(img, false)
@@ -243,10 +252,10 @@ void addShapeToUnion(qupath.lib.roi.interfaces.ROI roi, Union union, String shap
 
             def mask = new Mask()
             mask.setID(shapeID)
-            mask.setX(geom.getBoundsX())
-            mask.setY(geom.getBoundsY())
-            mask.setWidth(geom.getBoundsWidth())
-            mask.setHeight(geom.getBoundsHeight())
+            mask.setX(originX)
+            mask.setY(originY)
+            mask.setWidth(width)
+            mask.setHeight(height)
             mask.setBinData(binData)
 
             union.addShape(mask as Shape)
