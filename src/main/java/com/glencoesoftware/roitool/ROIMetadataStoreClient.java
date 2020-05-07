@@ -19,6 +19,7 @@
 package com.glencoesoftware.roitool;
 
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -28,16 +29,20 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ome.codecs.CodecException;
+import ome.codecs.ZlibCodec;
 import ome.conditions.ApiUsageException;
 import ome.formats.Index;
 import ome.formats.OMEROMetadataStoreClient;
 import ome.util.LSID;
+import ome.xml.model.enums.Compression;
 import omero.ServerError;
 import omero.api.ServiceFactoryPrx;
 import omero.metadatastore.IObjectContainer;
 import omero.model.IObject;
 import omero.model.Image;
 import omero.model.ImageI;
+import omero.model.Mask;
 import omero.model.Roi;
 import omero.model.Shape;
 import omero.model.Annotation;
@@ -292,4 +297,34 @@ public class ROIMetadataStoreClient extends OMEROMetadataStoreClient {
         Roi o = (Roi) getIObjectContainer(Roi.class, indexes).sourceObject;
         o.setName(toRType(name));
     }
+
+    @Override
+    public void setMaskBinData(byte[] binData, int roiIndex, int shapeIndex)
+    {
+        Mask o = getMask(roiIndex, shapeIndex);
+        if (o != null)
+        {
+            o.setBytes(binData);
+        }
+    }
+
+    @Override
+    public void setMaskBinDataCompression(Compression compression, int roiIndex, int shapeIndex) {
+        if (compression != Compression.NONE) {
+            Mask o = getMask(roiIndex, shapeIndex);
+            if (o != null) {
+                try {
+                    byte[] bits = Base64.getDecoder().decode(o.getBytes());
+                    if (compression == Compression.ZLIB) {
+                        bits = new ZlibCodec().decompress(bits, null);
+                    }
+                    o.setBytes(bits);
+                }
+                catch (CodecException e) {
+                    log.warn("Could not decode mask", e);
+                }
+            }
+        }
+    }
+
 }
