@@ -153,8 +153,11 @@ The chosen OME-XML file is expected to contain only ROIs and optionally MapAnnot
 
 1. Open an image in QuPath.
 2. Draw or import annotations, or create a cell detection.
-3. Open the ```OME_XML_export.groovy``` script in QuPath and select ```Run```.
-4. Choose the output OME-XML file.
+3. If a wand annotation was drawn, increase the line thickness as needed to get a visible line.
+   Select ```Preferences > Objects``` and then adjust the value of ```Annotation line thickness```.
+   A thickness of at least 3.0 is recommended.
+4. Open the ```OME_XML_export.groovy``` script in QuPath and select ```Run```.
+5. Choose the output OME-XML file.
 
 Most QuPath objects have a direct counterpart in the OME-XML schema.  The exception is geometry ROIs created by the wand and brush tools.
 These will be represented in OME-XML as masks covering the bounding box of the ROI (not the whole image).  Some loss of precision may occur

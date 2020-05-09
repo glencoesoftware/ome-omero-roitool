@@ -31,6 +31,7 @@
  */
 
 
+import java.awt.BasicStroke
 import java.awt.geom.AffineTransform
 import loci.formats.gui.AWTImageTools
 import ome.codecs.Base64Codec
@@ -217,9 +218,10 @@ void addShapeToUnion(qupath.lib.roi.interfaces.ROI roi, Union union, String shap
             height = geom.getBoundsWidth()
             img = new BufferedImage(width as int, height as int, BufferedImage.TYPE_BYTE_GRAY)
 
-
             // draw the shape onto the image
             graphics = img.createGraphics()
+            strokeWidth = PathPrefs.annotationStrokeThicknessProperty().get()
+            graphics.setStroke(new BasicStroke(strokeWidth))
             graphics.setColor(java.awt.Color.WHITE)
 
             // make sure to translate shape so that it is within the bounds of the mask
