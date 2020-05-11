@@ -214,7 +214,7 @@ void addShapeToUnion(qupath.lib.roi.interfaces.ROI roi, Union union, String shap
             originX = geom.getBoundsX()
             originY = geom.getBoundsY()
             width = geom.getBoundsWidth()
-            height = geom.getBoundsWidth()
+            height = geom.getBoundsHeight()
             img = new BufferedImage(width as int, height as int, BufferedImage.TYPE_BYTE_GRAY)
 
             // draw the shape onto the image
