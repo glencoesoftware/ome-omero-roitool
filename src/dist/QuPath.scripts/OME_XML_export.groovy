@@ -32,7 +32,6 @@
 
 
 import java.awt.BasicStroke
-import java.awt.geom.AffineTransform
 import loci.formats.gui.AWTImageTools
 import ome.codecs.Base64Codec
 import ome.codecs.BitWriter
@@ -225,9 +224,8 @@ void addShapeToUnion(qupath.lib.roi.interfaces.ROI roi, Union union, String shap
             graphics.setColor(java.awt.Color.WHITE)
 
             // make sure to translate shape so that it is within the bounds of the mask
+            geom = geom.translate(-1 * originX, -1 * originY)
             drawableShape = geom.getShape()
-            transform = AffineTransform.getTranslateInstance(-1 * originX, -1 * originY)
-            drawableShape.transform(transform)
             graphics.draw(drawableShape)
 
             // convert the image to a binary mask
