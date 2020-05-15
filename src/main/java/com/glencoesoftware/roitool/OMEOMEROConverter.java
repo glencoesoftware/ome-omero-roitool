@@ -72,11 +72,11 @@ public class OMEOMEROConverter {
         this.omeXmlService = factory.getInstance(OMEXMLService.class);
     }
 
-    public void initialize(String username, String password, String server, int port)
+    public void initialize(String username, String password, String server, int port, Long group)
             throws CannotCreateSessionException, PermissionDeniedException,
                    ServerError
     {
-        target.initialize(username, password, server, port);
+        target.initialize(username, password, server, port, group, true);
         IConfigPrx iConfig = this.target.getServiceFactory().getConfigService();
         this.lsidFormat = String.format("urn:lsid:%s:%%s:%s_%%s:%%s",
                 iConfig.getConfigValue("omero.db.authority"),
@@ -87,7 +87,7 @@ public class OMEOMEROConverter {
             throws CannotCreateSessionException, PermissionDeniedException,
                    ServerError
     {
-        initialize(sessionKey, sessionKey, server, port);
+        initialize(sessionKey, sessionKey, server, port, null);
     }
 
     public List<IObject> importRoisFromFile(File input)

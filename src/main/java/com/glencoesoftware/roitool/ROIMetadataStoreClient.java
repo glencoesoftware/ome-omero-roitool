@@ -33,6 +33,7 @@ import ome.formats.Index;
 import ome.formats.OMEROMetadataStoreClient;
 import ome.util.LSID;
 import omero.ServerError;
+import omero.api.IUpdatePrx;
 import omero.api.ServiceFactoryPrx;
 import omero.metadatastore.IObjectContainer;
 import omero.model.IObject;
@@ -55,6 +56,8 @@ public class ROIMetadataStoreClient extends OMEROMetadataStoreClient {
     /** A map of roiIndex vs. ROI object ordered by first access. */
     private Map<Integer, Roi> roiList =
         new LinkedHashMap<Integer, Roi>();
+
+		private Long groupID = null;
 
     /**
      * Returns a Roi model object based on its indexes within the
@@ -124,7 +127,15 @@ public class ROIMetadataStoreClient extends OMEROMetadataStoreClient {
         linkImage(imageId);
         ServiceFactoryPrx sf = this.getServiceFactory();
         List<IObject> rois = new ArrayList<IObject>(roiList.values());
-        rois = sf.getUpdateService().saveAndReturnArray(rois);
+
+				Map<String, String> callCtx = new HashMap<String, String>();
+        if (groupID != null) {
+            callCtx.put("omero.group", groupID.toString());
+        }
+
+        IUpdatePrx updateService =
+            (IUpdatePrx) sf.getUpdateService().ice_context(callCtx);
+        rois = updateService.saveAndReturnArray(rois);
         for (IObject roi : rois)
         {
             log.info("Saved ROI with ID: {}", unwrap(roi.getId()));
@@ -291,5 +302,11 @@ public class ROIMetadataStoreClient extends OMEROMetadataStoreClient {
         indexes.put(Index.ROI_INDEX, ROIIndex);
         Roi o = (Roi) getIObjectContainer(Roi.class, indexes).sourceObject;
         o.setName(toRType(name));
+    }
+
+		@Override
+    public Long setGroup(Long id) {
+        groupID = id;
+        return super.setGroup(id);
     }
 }

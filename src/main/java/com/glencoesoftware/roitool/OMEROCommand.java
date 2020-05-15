@@ -57,6 +57,12 @@ public abstract class OMEROCommand
     String password = null;
 
     @CommandLine.Option(
+            names = "--group",
+            description = "OMERO group ID"
+    )
+    Long group = null;
+
+    @CommandLine.Option(
             names = "--key",
             description = "OMERO session key"
     )
@@ -82,7 +88,7 @@ public abstract class OMEROCommand
         OMEOMEROConverter converter = new OMEOMEROConverter(imageId);
         if (username != null)
         {
-            converter.initialize(username, password, server, port);
+            converter.initialize(username, password, server, port, group);
         }
         else if (sessionKey != null)
         {
