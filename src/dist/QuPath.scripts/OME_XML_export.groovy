@@ -31,19 +31,27 @@
  */
 
 
-
+import java.awt.BasicStroke
+import loci.formats.gui.AWTImageTools
+import ome.codecs.Base64Codec
+import ome.codecs.BitWriter
+import ome.codecs.Codec
+import ome.codecs.ZlibCodec
 import ome.specification.XMLWriter
 import ome.units.UNITS
 import ome.units.quantity.Length
 import ome.xml.model.*
+import ome.xml.model.enums.Compression
 import ome.xml.model.enums.FillRule
 import ome.xml.model.primitives.Color
 import ome.xml.model.primitives.NonNegativeInteger
+import ome.xml.model.primitives.NonNegativeLong
 import qupath.lib.common.ColorTools
 import qupath.lib.common.GeneralTools
 import qupath.lib.gui.dialogs.Dialogs
 import qupath.lib.gui.prefs.PathPrefs
 import qupath.lib.gui.scripting.QPEx
+import qupath.lib.objects.PathCellObject
 import qupath.lib.objects.PathROIObject
 import qupath.lib.roi.*
 
@@ -119,22 +127,7 @@ static void setCommonProperties(Shape shape, PathROIObject path, qupath.lib.roi.
     // shape.setStrokeDashArray()
 }
 
-rois.eachWithIndex { PathROIObject path, int i ->
-    def roi = path.getROI()
-    print(String.format("ROI type: %s", roi.class))
-    def mapAnnotationID = String.format("MapAnnotation-%s", i)
-    def shapeID = String.format("Shape:%s", i)
-    def roiID = String.format("ROI-%s", i)
-
-    // New ROI
-    def omeROI = new ROI()
-    omeROI.setID(roiID)
-    if (path.pathClass != null) {
-        omeROI.setName(path.pathClass.name)
-    }
-
-    def union = new Union()
-
+void addShapeToUnion(qupath.lib.roi.interfaces.ROI roi, Union union, String shapeID, PathROIObject path) {
     // Instantiate the class of the shape from the type of ROI and set class specific properties
     switch (roi) {
         case EllipseROI:
@@ -211,8 +204,93 @@ rois.eachWithIndex { PathROIObject path, int i ->
             setCommonProperties(shape, path, roi)
             union.addShape(shape as Shape)
             break
+        case GeometryROI:
+            // arbitrary geometry resulting from wand tool
+            // may or may not represent distinct polygons
+            // easiest way to represent is as a mask
+            def geom = roi as GeometryROI
+
+            // construct a blank image matching the ROI bounding box
+            originX = geom.getBoundsX()
+            originY = geom.getBoundsY()
+            width = geom.getBoundsWidth()
+            height = geom.getBoundsHeight()
+            img = new BufferedImage(width as int, height as int, BufferedImage.TYPE_BYTE_GRAY)
+
+            // draw the shape onto the image
+            graphics = img.createGraphics()
+            strokeWidth = PathPrefs.annotationStrokeThicknessProperty().get()
+            graphics.setStroke(new BasicStroke(strokeWidth))
+            graphics.setColor(java.awt.Color.WHITE)
+
+            // make sure to translate shape so that it is within the bounds of the mask
+            geom = geom.translate(-1 * originX, -1 * originY)
+            drawableShape = geom.getShape()
+            graphics.draw(drawableShape)
+
+            // convert the image to a binary mask
+            pixels = AWTImageTools.getBytes(img, false)
+            nBytes = pixels.length / 8
+            if (nBytes * 8 < pixels.length) {
+                nBytes++
+            }
+            bits = new BitWriter(nBytes as int)
+            for (byte b : pixels) {
+                bits.write(b == 0 ? 0 : 1, 1)
+            }
+
+            encoded = bits.toByteArray()
+            encoded = new ZlibCodec().compress(encoded, null)
+
+            encoder = new Base64Codec()
+            encoded = encoder.compress(encoded, null)
+
+            binData = new BinData()
+            binData.setLength(new NonNegativeLong(Long.valueOf(encoded.length)))
+            binData.setCompression(Compression.ZLIB)
+            binData.setBase64Binary(encoded)
+
+            def mask = new Mask()
+            mask.setID(shapeID)
+            mask.setX(originX)
+            mask.setY(originY)
+            mask.setWidth(width)
+            mask.setHeight(height)
+            mask.setBinData(binData)
+
+            union.addShape(mask as Shape)
+            break
         default:
             print("Unsupported ROI type: " + roi)
+    }
+}
+
+
+rois.eachWithIndex { PathROIObject path, int i ->
+    def roi = path.getROI()
+    print(String.format("ROI type: %s", roi.class))
+    def mapAnnotationID = String.format("MapAnnotation-%s", i)
+    def shapeID = String.format("Shape:%s:%s", i, 0)
+    def roiID = String.format("ROI-%s", i)
+
+    // New ROI
+    def omeROI = new ROI()
+    omeROI.setID(roiID)
+    if (path.pathClass != null) {
+        omeROI.setName(path.pathClass.name)
+    }
+
+    def union = new Union()
+
+    addShapeToUnion(roi, union, shapeID, path)
+
+    // PathCellObjects are the result of running a cell detection
+    // the result of getROI is the cell boundary
+    // the nucleus is defined as a separate ROI and should be included
+    // in the OME ROI as a separate shape
+    if (path instanceof PathCellObject) {
+        shapeID = String.format("Shape:%s:%s", i, 1)
+        addShapeToUnion(path.getNucleusROI(), union, shapeID, path)
     }
 
     if (union.sizeOfShapeList() > 0) {

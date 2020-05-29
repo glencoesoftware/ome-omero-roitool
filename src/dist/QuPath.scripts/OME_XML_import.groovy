@@ -50,9 +50,11 @@ import loci.common.services.ServiceFactory
 import loci.formats.services.OMEXMLService
 import ome.codecs.ZlibCodec
 import ome.units.UNITS
+import ome.units.quantity.Length
 import ome.xml.meta.OMEXMLMetadata
 import ome.xml.model.enums.Compression
 import ome.xml.model.primitives.Color
+import ome.xml.model.primitives.NonNegativeInteger
 import qupath.imagej.tools.ROIConverterIJ
 import qupath.lib.common.ColorTools
 import qupath.lib.geom.Point2
@@ -61,6 +63,7 @@ import qupath.lib.gui.dialogs.ParameterPanelFX
 import qupath.lib.gui.prefs.PathPrefs
 import qupath.lib.gui.scripting.QPEx
 import qupath.lib.objects.PathAnnotationObject
+import qupath.lib.objects.PathCellObject
 import qupath.lib.objects.PathDetectionObject
 import qupath.lib.objects.PathROIObject
 import qupath.lib.objects.classes.PathClassFactory
@@ -75,7 +78,7 @@ xml = file.readLines().join("\n")
 
 factory = new ServiceFactory()
 service = factory.getInstance(OMEXMLService.class)
-OMEXMLMetadata omexml = service.createOMEXMLMetadata(xml)
+omexml = service.createOMEXMLMetadata(xml)
 
 nameIndexes = new HashMap<String, Integer>();
 
@@ -92,19 +95,25 @@ thinLineStrokeWidths = new HashSet<>()
 thickLineStrokeWidths = new HashSet<>()
 pathClasses = new HashSet<>()
 
-void setPathClassAndStroke(PathROIObject path, String className, Color color, Number strokeWidth) {
+// unpack a NonNegativeInteger from OME-XML, using a default value of 0 if null
+int getValue(NonNegativeInteger v) {
+    return v == null ? 0 : v.numberValue.intValue()
+}
+
+void setPathClassAndStroke(PathROIObject path, String className, Color color, Length strokeWidth) {
     def qpColor = null
     if (color != null) {
         qpColor = ColorTools.makeRGBA(color.red, color.green, color.blue, color.alpha)
     }
 
     if (strokeWidth != null) {
+        strokeWidthValue = strokeWidth.value(UNITS.PIXEL)
         switch (path) {
             case PathDetectionObject:
-                thinLineStrokeWidths.add(strokeWidth)
+                thinLineStrokeWidths.add(strokeWidthValue)
                 break
             case PathAnnotationObject:
-                thickLineStrokeWidths.add(strokeWidth)
+                thickLineStrokeWidths.add(strokeWidthValue)
                 break
         }
     }
@@ -122,6 +131,170 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
         // update list of unique classes so that the UI can be updated later
         pathClasses.add(qpClass);
     }
+}
+
+// convert the OME-XML shape with the given indexes to a QuPath ROI
+qupath.lib.roi.interfaces.ROI importShape(PathROIObject path, int roiIdx, int shapeIdx, String className) {
+    def shapeType = omexml.getShapeType(roiIdx, shapeIdx)
+    println(String.format("ROI %d:%d has type '%s'", roiIdx, shapeIdx, shapeType))
+
+    def locked = null
+    def roi = null
+
+    switch (shapeType) {
+        case "Ellipse":
+            def color = omexml.getEllipseStrokeColor(roiIdx, shapeIdx)
+            def strokeWidth = omexml.getEllipseStrokeWidth(roiIdx, shapeIdx)
+            setPathClassAndStroke(path, className, color, strokeWidth)
+
+            locked = omexml.getEllipseLocked(roiIdx, shapeIdx)
+
+            def c = getValue(omexml.getEllipseTheC(roiIdx, shapeIdx))
+            def z = getValue(omexml.getEllipseTheZ(roiIdx, shapeIdx))
+            def t = getValue(omexml.getEllipseTheT(roiIdx, shapeIdx))
+            def plane = new ImagePlane(c, z, t)
+            def centroidX = omexml.getEllipseX(roiIdx, shapeIdx)
+            def centroidY = omexml.getEllipseY(roiIdx, shapeIdx)
+            def radiusX = omexml.getEllipseRadiusX(roiIdx, shapeIdx)
+            def radiusY = omexml.getEllipseRadiusY(roiIdx, shapeIdx)
+            def x = centroidX - radiusX
+            def y = centroidY - radiusY
+            def width = radiusX * 2
+            def height = radiusY * 2
+            roi = new EllipseROI(x, y, width, height, plane)
+
+            break
+        case "Line":
+            def color = omexml.getLineStrokeColor(roiIdx, shapeIdx)
+            def strokeWidth = omexml.getLineStrokeWidth(roiIdx, shapeIdx)
+            setPathClassAndStroke(path, className, color, strokeWidth)
+
+            locked = omexml.getLineLocked(roiIdx, shapeIdx)
+
+            def c = getValue(omexml.getLineTheC(roiIdx, shapeIdx))
+            def z = getValue(omexml.getLineTheZ(roiIdx, shapeIdx))
+            def t = getValue(omexml.getLineTheT(roiIdx, shapeIdx))
+            def plane = new ImagePlane(c, z, t)
+            def x = omexml.getLineX1(roiIdx, shapeIdx)
+            def y = omexml.getLineY1(roiIdx, shapeIdx)
+            def x2 = omexml.getLineX2(roiIdx, shapeIdx)
+            def y2 = omexml.getLineY2(roiIdx, shapeIdx)
+            roi = new LineROI(x, y, x2, y2, plane)
+
+            break
+        case "Point":
+            def color = omexml.getPointStrokeColor(roiIdx, shapeIdx)
+            def strokeWidth = omexml.getPointStrokeWidth(roiIdx, shapeIdx)
+            setPathClassAndStroke(path, className, color, strokeWidth)
+
+            locked = omexml.getPointLocked(roiIdx, shapeIdx)
+
+            def c = getValue(omexml.getPointTheC(roiIdx, shapeIdx))
+            def z = getValue(omexml.getPointTheZ(roiIdx, shapeIdx))
+            def t = getValue(omexml.getPointTheT(roiIdx, shapeIdx))
+            def plane = new ImagePlane(c, z, t)
+            def x = omexml.getPointX(roiIdx, shapeIdx)
+            def y = omexml.getPointY(roiIdx, shapeIdx)
+            roi = new PointsROI(x, y, plane)
+
+            break
+        case "Polygon":
+            def color = omexml.getPolygonStrokeColor(roiIdx, shapeIdx)
+            def strokeWidth = omexml.getPolygonStrokeWidth(roiIdx, shapeIdx)
+            setPathClassAndStroke(path, className, color, strokeWidth)
+
+            locked = omexml.getPolygonLocked(roiIdx, shapeIdx)
+
+            def c = getValue(omexml.getPolygonTheC(roiIdx, shapeIdx))
+            def z = getValue(omexml.getPolygonTheZ(roiIdx, shapeIdx))
+            def t = getValue(omexml.getPolygonTheT(roiIdx, shapeIdx))
+            def plane = new ImagePlane(c, z, t)
+            def pointsString = omexml.getPolygonPoints(roiIdx, shapeIdx)
+            def points = pointsString.split(/ /).collect { point ->
+                def (x, y) = point.split(/,/)
+                new Point2(x.toDouble(), y.toDouble())
+            }
+            roi = new PolygonROI(points, plane)
+
+            break
+        case "Polyline":
+            def color = omexml.getPolylineStrokeColor(roiIdx, shapeIdx)
+            def strokeWidth = omexml.getPolylineStrokeWidth(roiIdx, shapeIdx)
+            setPathClassAndStroke(path, className, color, strokeWidth)
+
+            locked = omexml.getPolylineLocked(roiIdx, shapeIdx)
+
+            def c = getValue(omexml.getPolylineTheC(roiIdx, shapeIdx))
+            def z = getValue(omexml.getPolylineTheZ(roiIdx, shapeIdx))
+            def t = getValue(omexml.getPolylineTheT(roiIdx, shapeIdx))
+            def plane = new ImagePlane(c, z, t)
+            def pointsString = omexml.getPolylinePoints(roiIdx, shapeIdx)
+            def points = pointsString.split(/ /).collect { point ->
+                def (x, y) = point.split(/,/)
+                new Point2(x.toDouble(), y.toDouble())
+            }
+            roi = new PolylineROI(points, plane)
+
+            break
+        case "Rectangle":
+            def color = omexml.getRectangleStrokeColor(roiIdx, shapeIdx)
+            def strokeWidth = omexml.getRectangleStrokeWidth(roiIdx, shapeIdx)
+            setPathClassAndStroke(path, className, color, strokeWidth)
+
+            locked = omexml.getRectangleLocked(roiIdx, shapeIdx)
+
+            def c = getValue(omexml.getRectangleTheC(roiIdx, shapeIdx))
+            def z = getValue(omexml.getRectangleTheZ(roiIdx, shapeIdx))
+            def t = getValue(omexml.getRectangleTheT(roiIdx, shapeIdx))
+            def plane = new ImagePlane(c, z, t)
+            def x = omexml.getRectangleX(roiIdx, shapeIdx)
+            def y = omexml.getRectangleY(roiIdx, shapeIdx)
+            def width = omexml.getRectangleWidth(roiIdx, shapeIdx)
+            def height = omexml.getRectangleHeight(roiIdx, shapeIdx)
+            roi = new RectangleROI(x, y, width, height, plane)
+
+            break
+        case "Mask":
+            def x = omexml.getMaskX(roiIdx, shapeIdx)
+            def y = omexml.getMaskY(roiIdx, shapeIdx)
+            def width = omexml.getMaskWidth(roiIdx, shapeIdx).intValue()
+            def height = omexml.getMaskHeight(roiIdx, shapeIdx).intValue()
+            def binData = omexml.getMaskBinData(roiIdx, shapeIdx)
+            def compression = omexml.getMaskBinDataCompression(roiIdx, shapeIdx)
+
+            def bits = Base64.getDecoder().decode(binData)
+            if (compression == Compression.ZLIB) {
+                bits = new ZlibCodec().decompress(bits, null)
+            }
+            def stream = new RandomAccessInputStream(bits)
+            def bytes = new byte[width * height]
+            (0..(bytes.length - 1)).each { bitIndex ->
+                bytes[bitIndex] = stream.readBits(1) * Byte.MAX_VALUE;
+            }
+
+            // see https://petebankhead.github.io/qupath/scripting/2018/03/13/script-export-import-binary-masks.html
+            def bp = new ByteProcessor(width, height, bytes)
+            bp.setThreshold(Byte.MAX_VALUE - 1, 255, ImageProcessor.NO_LUT_UPDATE)
+            def ijROI = new ThresholdToSelection().convert(bp)
+
+            if (ijROI != null) {
+                def c = getValue(omexml.getMaskTheC(roiIdx, shapeIdx))
+                def z = getValue(omexml.getMaskTheZ(roiIdx, shapeIdx))
+                def t = getValue(omexml.getMaskTheT(roiIdx, shapeIdx))
+
+                roi = ROIConverterIJ.convertToAreaROI(ijROI, -1 * x, -1 * y, 1, c, z, t)
+            }
+
+            break
+        default:
+            throw new Exception(String.format("ROI %d:%d is of unknown type: %s", roiIdx, shapeIdx, shapeType))
+    }
+
+    if (locked != null) {
+        path.setLocked(locked)
+    }
+
+    return roi
 }
 
 (0..(roiCount - 1)).each { roiIdx ->
@@ -147,279 +320,40 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
     }
 
     println("Shape count: " + omexml.getShapeCount(roiIdx))
-    (0..(omexml.getShapeCount(roiIdx) - 1)).each { shapeIdx ->
+    effectiveCount = omexml.getShapeCount(roiIdx)
+
+    // special case for cell detections
+    // if this ROI represents a detection and has exactly 2 shapes,
+    // then treat as a single cell where the first shape is the cell boundary
+    // and the second shape is the cell nucleus
+    if (mapAnnotations["qupath:is-detection"] == "true" && effectiveCount == 2) {
+       effectiveCount = 1
+    }
+
+    (0..(effectiveCount - 1)).each { shapeIdx ->
 
         PathROIObject path
         if (mapAnnotations["qupath:is-detection"] == "true") {
-            path = new PathDetectionObject()
+            if (omexml.getShapeCount(roiIdx) == 2) {
+                path = new PathCellObject()
+            } else {
+                path = new PathDetectionObject()
+            }
         } else {
             // Treat all externally created ROIs as Annotations from QuPath's perspective
             path = new PathAnnotationObject()
         }
-        def roi
-
-        def shapeType = omexml.getShapeType(roiIdx, shapeIdx)
-        switch (shapeType) {
-            case "Ellipse":
-                println(String.format("ROI %d:%d is an Elipse", roiIdx, shapeIdx))
-
-                def color = omexml.getEllipseStrokeColor(roiIdx, shapeIdx)
-                def strokeWidth = null
-                if (omexml.getEllipseStrokeWidth(roiIdx, shapeIdx) != null) {
-                    strokeWidth = omexml.getEllipseStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL)
-                }
-                def className = mapAnnotations["qupath:class"]
-                if (className == null) {
-                    className = mapAnnotations["class"]
-                }
-                if (className == null) {
-                    // If there is no explicit class name, but the ROI has a name, use that as class name
-                    className = omexml.getROIName(roiIdx)
-                }
-                setPathClassAndStroke(path, className, color, strokeWidth)
-
-                if (omexml.getEllipseLocked(roiIdx, shapeIdx) != null) {
-                    path.setLocked(omexml.getEllipseLocked(roiIdx, shapeIdx))
-                }
-
-                def c = omexml.getEllipseTheC(roiIdx, shapeIdx)
-                c = c != null ? c.numberValue.intValue() : 0
-                def z = omexml.getEllipseTheZ(roiIdx, shapeIdx)
-                z = z != null ? z.numberValue.intValue() : 0
-                def t = omexml.getEllipseTheT(roiIdx, shapeIdx)
-                t = t != null ? t.numberValue.intValue() : 0
-                def plane = new ImagePlane(c, z, t)
-                def centroidX = omexml.getEllipseX(roiIdx, shapeIdx)
-                def centroidY = omexml.getEllipseY(roiIdx, shapeIdx)
-                def radiusX = omexml.getEllipseRadiusX(roiIdx, shapeIdx)
-                def radiusY = omexml.getEllipseRadiusY(roiIdx, shapeIdx)
-                def x = centroidX - radiusX
-                def y = centroidY - radiusY
-                def width = radiusX * 2
-                def height = radiusY * 2
-                roi = new EllipseROI(x, y, width, height, plane)
-                
-                break
-            case "Line":
-                println(String.format("ROI %d:%d is a Line", roiIdx, shapeIdx))
-
-                def color = omexml.getLineStrokeColor(roiIdx, shapeIdx)
-                def strokeWidth = null
-                if (omexml.getLineStrokeWidth(roiIdx, shapeIdx) != null) {
-                    strokeWidth = omexml.getLineStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL)
-                }
-                def className = mapAnnotations["qupath:class"]
-                if (className == null) {
-                    className = mapAnnotations["class"]
-                }
-                if (className == null) {
-                    // If there is no explicit class name, but the ROI has a name, use that as class name
-                    className = omexml.getROIName(roiIdx)
-                }
-                setPathClassAndStroke(path, className, color, strokeWidth)
-
-                if (omexml.getLineLocked(roiIdx, shapeIdx) != null) {
-                    path.setLocked(omexml.getLineLocked(roiIdx, shapeIdx))
-                }
-
-                def c = omexml.getLineTheC(roiIdx, shapeIdx)
-                c = c != null ? c.numberValue.intValue() : 0
-                def z = omexml.getLineTheZ(roiIdx, shapeIdx)
-                z = z != null ? z.numberValue.intValue() : 0
-                def t = omexml.getLineTheT(roiIdx, shapeIdx)
-                t = t != null ? t.numberValue.intValue() : 0
-                def plane = new ImagePlane(c, z, t)
-                def x = omexml.getLineX1(roiIdx, shapeIdx)
-                def y = omexml.getLineY1(roiIdx, shapeIdx)
-                def x2 = omexml.getLineX2(roiIdx, shapeIdx)
-                def y2 = omexml.getLineY2(roiIdx, shapeIdx)
-                roi = new LineROI(x, y, x2, y2, plane)
-                
-                break
-            case "Point":
-                println(String.format("ROI %d:%d is a Point", roiIdx, shapeIdx))
-                
-                def color = omexml.getPointStrokeColor(roiIdx, shapeIdx)
-                def strokeWidth = null
-                if (omexml.getPointStrokeWidth(roiIdx, shapeIdx) != null) {
-                    strokeWidth = omexml.getPointStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL)
-                }
-                def className = mapAnnotations["qupath:class"]
-                if (className == null) {
-                    className = mapAnnotations["class"]
-                }
-                if (className == null) {
-                    // If there is no explicit class name, but the ROI has a name, use that as class name
-                    className = omexml.getROIName(roiIdx)
-                }
-                setPathClassAndStroke(path, className, color, strokeWidth)
-
-                if (omexml.getPointLocked(roiIdx, shapeIdx) != null) {
-                    path.setLocked(omexml.getPointLocked(roiIdx, shapeIdx))
-                }
-
-                def c = omexml.getPointTheC(roiIdx, shapeIdx)
-                c = c != null ? c.numberValue.intValue() : 0
-                def z = omexml.getPointTheZ(roiIdx, shapeIdx)
-                z = z != null ? z.numberValue.intValue() : 0
-                def t = omexml.getPointTheT(roiIdx, shapeIdx)
-                t = t != null ? t.numberValue.intValue() : 0
-                def plane = new ImagePlane(c, z, t)
-                def x = omexml.getPointX(roiIdx, shapeIdx)
-                def y = omexml.getPointY(roiIdx, shapeIdx)
-                roi = new PointsROI(x, y, plane)
-                
-                break
-            case "Polygon":
-                println(String.format("ROI %d:%d is a Polygon", roiIdx, shapeIdx))
-
-                def color = omexml.getPolygonStrokeColor(roiIdx, shapeIdx)
-                def strokeWidth = null
-                if (omexml.getPolygonStrokeWidth(roiIdx, shapeIdx) != null) {
-                    strokeWidth = omexml.getPolygonStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL)
-                }
-                def className = mapAnnotations["qupath:class"]
-                if (className == null) {
-                    className = mapAnnotations["class"]
-                }
-                if (className == null) {
-                    // If there is no explicit class name, but the ROI has a name, use that as class name
-                    className = omexml.getROIName(roiIdx)
-                }
-                setPathClassAndStroke(path, className, color, strokeWidth)
-
-                if (omexml.getPolygonLocked(roiIdx, shapeIdx) != null) {
-                    path.setLocked(omexml.getPolygonLocked(roiIdx, shapeIdx))
-                }
-
-                def c = omexml.getPolygonTheC(roiIdx, shapeIdx)
-                c = c != null ? c.numberValue.intValue() : 0
-                def z = omexml.getPolygonTheZ(roiIdx, shapeIdx)
-                z = z != null ? z.numberValue.intValue() : 0
-                def t = omexml.getPolygonTheT(roiIdx, shapeIdx)
-                t = t != null ? t.numberValue.intValue() : 0
-                def plane = new ImagePlane(c, z, t)
-                def pointsString = omexml.getPolygonPoints(roiIdx, shapeIdx)
-                def points = pointsString.split(/ /).collect { point ->
-                    def (x, y) = point.split(/,/)
-                    new Point2(x.toDouble(), y.toDouble())
-                }
-                roi = new PolygonROI(points, plane)
-                
-                break
-            case "Polyline":
-                println(String.format("ROI %d:%d is a Polyline", roiIdx, shapeIdx))
-
-                def color = omexml.getPolylineStrokeColor(roiIdx, shapeIdx)
-                def strokeWidth = null
-                if (omexml.getPolylineStrokeWidth(roiIdx, shapeIdx) != null) {
-                    strokeWidth = omexml.getPolylineStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL)
-                }
-                def className = mapAnnotations["qupath:class"]
-                if (className == null) {
-                    className = mapAnnotations["class"]
-                }
-                if (className == null) {
-                    // If there is no explicit class name, but the ROI has a name, use that as class name
-                    className = omexml.getROIName(roiIdx)
-                }
-                setPathClassAndStroke(path, className, color, strokeWidth)
-
-                if (omexml.getPolylineLocked(roiIdx, shapeIdx) != null) {
-                    path.setLocked(omexml.getPolylineLocked(roiIdx, shapeIdx))
-                }
-
-                def c = omexml.getPolylineTheC(roiIdx, shapeIdx)
-                c = c != null ? c.numberValue.intValue() : 0
-                def z = omexml.getPolylineTheZ(roiIdx, shapeIdx)
-                z = z != null ? z.numberValue.intValue() : 0
-                def t = omexml.getPolylineTheT(roiIdx, shapeIdx)
-                t = t != null ? t.numberValue.intValue() : 0
-                def plane = new ImagePlane(c, z, t)
-                def pointsString = omexml.getPolylinePoints(roiIdx, shapeIdx)
-                def points = pointsString.split(/ /).collect { point ->
-                    def (x, y) = point.split(/,/)
-                    new Point2(x.toDouble(), y.toDouble())
-                }
-                roi = new PolylineROI(points, plane)
-                
-                break
-            case "Rectangle":
-                println(String.format("ROI %d:%d is a Rectangle", roiIdx, shapeIdx))
-
-                def color = omexml.getRectangleStrokeColor(roiIdx, shapeIdx)
-                def strokeWidth = null
-                if (omexml.getRectangleStrokeWidth(roiIdx, shapeIdx) != null) {
-                    strokeWidth = omexml.getRectangleStrokeWidth(roiIdx, shapeIdx).value(UNITS.PIXEL)
-                }
-                def className = mapAnnotations["qupath:class"]
-                if (className == null) {
-                    className = mapAnnotations["class"]
-                }
-                if (className == null) {
-                    // If there is no explicit class name, but the ROI has a name, use that as class name
-                    className = omexml.getROIName(roiIdx)
-                }
-                setPathClassAndStroke(path, className, color, strokeWidth)
-
-                if (omexml.getRectangleLocked(roiIdx, shapeIdx) != null) {
-                    path.setLocked(omexml.getRectangleLocked(roiIdx, shapeIdx))
-                }
-
-                def c = omexml.getRectangleTheC(roiIdx, shapeIdx)
-                c = c != null ? c.numberValue.intValue() : 0
-                def z = omexml.getRectangleTheZ(roiIdx, shapeIdx)
-                z = z != null ? z.numberValue.intValue() : 0
-                def t = omexml.getRectangleTheT(roiIdx, shapeIdx)
-                t = t != null ? t.numberValue.intValue() : 0
-                def plane = new ImagePlane(c, z, t)
-                def x = omexml.getRectangleX(roiIdx, shapeIdx)
-                def y = omexml.getRectangleY(roiIdx, shapeIdx)
-                def width = omexml.getRectangleWidth(roiIdx, shapeIdx)
-                def height = omexml.getRectangleHeight(roiIdx, shapeIdx)
-                roi = new RectangleROI(x, y, width, height, plane)
-
-                break
-            case "Mask":
-                println(String.format("ROI %d:%d is a Mask", roiIdx, shapeIdx))
-
-                def x = omexml.getMaskX(roiIdx, shapeIdx)
-                def y = omexml.getMaskY(roiIdx, shapeIdx)
-                def width = omexml.getMaskWidth(roiIdx, shapeIdx).intValue()
-                def height = omexml.getMaskHeight(roiIdx, shapeIdx).intValue()
-                def binData = omexml.getMaskBinData(roiIdx, shapeIdx)
-                def compression = omexml.getMaskBinDataCompression(roiIdx, shapeIdx)
-
-                def bits = Base64.getDecoder().decode(binData)
-                if (compression == Compression.ZLIB) {
-                    bits = new ZlibCodec().decompress(bits, null)
-                }
-                def stream = new RandomAccessInputStream(bits)
-                def bytes = new byte[width * height]
-                (0..(bytes.length - 1)).each { bitIndex ->
-                    bytes[bitIndex] = stream.readBits(1) * Byte.MAX_VALUE;
-                }
-
-                // see https://petebankhead.github.io/qupath/scripting/2018/03/13/script-export-import-binary-masks.html
-                def bp = new ByteProcessor(width, height, bytes)
-                bp.setThreshold(Byte.MAX_VALUE - 1, 255, ImageProcessor.NO_LUT_UPDATE)
-                def ijROI = new ThresholdToSelection().convert(bp)
-
-                if (ijROI != null) {
-                    def c = omexml.getMaskTheC(roiIdx, shapeIdx)
-                    c = c != null ? c.numberValue.intValue() : 0
-                    def z = omexml.getMaskTheZ(roiIdx, shapeIdx)
-                    z = z != null ? z.numberValue.intValue() : 0
-                    def t = omexml.getMaskTheT(roiIdx, shapeIdx)
-                    t = t != null ? t.numberValue.intValue() : 0
-
-                    roi = ROIConverterIJ.convertToAreaROI(ijROI, x, y, 1, c, z, t);
-                }
-
-                break
-            default:
-                throw new Exception(String.format("ROI %d:%d is of unknown type: %s", roiIdx, shapeIdx, shapeType))
+        def className = mapAnnotations["qupath:class"]
+        if (className == null) {
+            className = mapAnnotations["class"]
+            if (className == null) {
+                // If there is no explicit class name, but the ROI has a name, use that as class name
+                className = omexml.getROIName(roiIdx)
+            }
         }
+
+        roi = importShape(path, roiIdx, shapeIdx, className)
+
         if (roi != null) {
             if (mapAnnotations["qupath:name"] != null) {
                 path.setName(mapAnnotations["qupath:name"])
@@ -436,6 +370,15 @@ void setPathClassAndStroke(PathROIObject path, String className, Color color, Nu
                             mapAnnotations[it].toString())
                 }
             }
+
+            // store the second shape as the cell nucleus
+            if (path instanceof PathCellObject) {
+               nucleusROI = importShape(path, roiIdx, shapeIdx + 1, className)
+
+               // no setter for the nucleus ROI
+               path = new PathCellObject(roi, nucleusROI, path.getPathClass())
+            }
+
             newPathObjects.add(path)
         }
     }
