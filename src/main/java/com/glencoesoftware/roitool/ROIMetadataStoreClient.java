@@ -37,6 +37,8 @@ import ome.formats.OMEROMetadataStoreClient;
 import ome.util.LSID;
 import ome.xml.model.enums.Compression;
 import omero.ServerError;
+import omero.api.IQueryPrx;
+import omero.api.IUpdatePrx;
 import omero.api.ServiceFactoryPrx;
 import omero.metadatastore.IObjectContainer;
 import omero.model.IObject;
@@ -46,7 +48,9 @@ import omero.model.Mask;
 import omero.model.Roi;
 import omero.model.Shape;
 import omero.model.Annotation;
+import omero.sys.ParametersI;
 
+import static omero.rtypes.rlong;
 import static omero.rtypes.unwrap;
 
 public class ROIMetadataStoreClient extends OMEROMetadataStoreClient {
@@ -123,13 +127,36 @@ public class ROIMetadataStoreClient extends OMEROMetadataStoreClient {
                 .toArray(new String[this.getReferenceStringCache().size()]);
         log.debug("Handling # of references: {}", referenceKeys.length);
         this.updateReferences(this.getReferenceStringCache());
+
+        // get the group ID
+        ServiceFactoryPrx sf = this.getServiceFactory();
+
+        Map<String, String> queryCtx = new HashMap<String, String>();
+        queryCtx.put("omero.group", "-1");
+        IQueryPrx q = (IQueryPrx) sf.getQueryService().ice_context(queryCtx);
+        String query = "select i from Image i where i.id = :id";
+
+        ParametersI p = new ParametersI();
+        p.add("id", rlong(imageId));
+
+        List<IObject> results = q.findAllByQuery(query, p);
+        Long groupId = results.get(0).getDetails().getGroup().getId().getValue();
+
         // Save to DB
         log.info("Saving to DB");
 
         linkImage(imageId);
-        ServiceFactoryPrx sf = this.getServiceFactory();
         List<IObject> rois = new ArrayList<IObject>(roiList.values());
-        rois = sf.getUpdateService().saveAndReturnArray(rois);
+
+        Map<String, String> callCtx = new HashMap<String, String>();
+        if (groupId != null) {
+            callCtx.put("omero.group", groupId.toString());
+        }
+
+        IUpdatePrx updateService =
+            (IUpdatePrx) sf.getUpdateService().ice_context(callCtx);
+        rois = updateService.saveAndReturnArray(rois);
+
         for (IObject roi : rois)
         {
             log.info("Saved ROI with ID: {}", unwrap(roi.getId()));
