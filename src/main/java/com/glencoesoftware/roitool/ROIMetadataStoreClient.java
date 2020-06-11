@@ -140,6 +140,10 @@ public class ROIMetadataStoreClient extends OMEROMetadataStoreClient {
         p.add("id", rlong(imageId));
 
         List<IObject> results = q.findAllByQuery(query, p);
+        if (results.size() == 0) {
+            throw new ServerError(
+                new IllegalArgumentException("Invalid image ID: " + imageId));
+        }
         Long groupId = results.get(0).getDetails().getGroup().getId().getValue();
 
         // Save to DB
