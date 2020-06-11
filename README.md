@@ -19,7 +19,7 @@ A set of scripts for importing and exporting OME-XML ROIs within QuPath are in `
 
 ## Workflow
 
-### General options
+### General usage
 
 ```
 $ ome-omero-roitool --help
@@ -33,6 +33,21 @@ Commands:
 ```
 
 Note that the ```--debug``` flag must precede the ```import``` or ```export``` sub-command.
+
+Both ```import``` and ```export``` sub-commands have a ```--password``` option for logging
+in to the OMERO server without an active session key.  There are two ways to use this option:
+
+1. Provide the password in the command, as in the examples below.
+2. Include the ```--password``` flag, but leave the value blank.  A password prompt will then appear.
+   The ```--password``` flag in this case must not be placed immediately before the image ID.
+   The easiest thing to do is something like:
+
+   ```
+   $ ome-omero-roitool import --server localhost --password --username test 30101 test.ome.xml
+   ```
+
+
+Omitting the ```--password``` flag entirely will not prompt for a password.
 
 ### ROI import
 
