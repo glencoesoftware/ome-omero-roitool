@@ -19,19 +19,33 @@ A set of scripts for importing and exporting OME-XML ROIs within QuPath are in `
 
 ## Workflow
 
+### General options
+
+```
+$ ome-omero-roitool --help
+13:53:20.212 [main] INFO com.glencoesoftware.roitool.Main - ROI tool 0.2.1-SNAPSHOT started
+Usage: <main class> [--debug] [--help] [COMMAND]
+      --debug   Set logging level to DEBUG
+      --help    Display this help and exit
+Commands:
+  import  Import ROIs from OME-XML file into an OMERO server
+  export  Export ROIs to an OME-XML file from an OMERO server
+```
+
+Note that the ```--debug``` flag must precede the ```import``` or ```export``` sub-command.
+
 ### ROI import
 
 ```
 $ ome-omero-roitool import --help
-13:12:01.925 [main] INFO com.glencoesoftware.roitool.Main - ROI tool 0.1.0-SNAPSHOT started
-Usage: <main class> import [--debug] [--help] [--key=<sessionKey>]
+13:53:38.811 [main] INFO com.glencoesoftware.roitool.Main - ROI tool 0.2.1-SNAPSHOT started
+Usage: <main class> import [--help] [--key=<sessionKey>]
                            [--password=<password>] [--port=<port>]
                            [--server=<server>] [--username=<username>]
                            <imageId> <input>
 Import ROIs from OME-XML file into an OMERO server
       <imageId>            OMERO Image ID to link the ROIs
       <input>              Input OME-XML file
-      --debug              Set logging level to DEBUG
       --help               Display this help and exit
       --key=<sessionKey>   OMERO session key
       --password=<password>
@@ -70,7 +84,7 @@ $ ome-omero-roitool import --server localhost --username test --password test 30
 
 ```
 $ ome-omero-roitool export --help
-13:12:01.925 [main] INFO com.glencoesoftware.roitool.Main - ROI tool 0.1.0-SNAPSHOT started
+13:56:07.049 [main] INFO com.glencoesoftware.roitool.Main - ROI tool 0.2.1-SNAPSHOT started
 Usage: <main class> export [--help] [--key=<sessionKey>]
                            [--password=<password>] [--port=<port>]
                            [--server=<server>] [--username=<username>]
