@@ -53,7 +53,9 @@ public abstract class OMEROCommand
 
     @CommandLine.Option(
             names = "--password",
-            description = "OMERO password"
+            description = "OMERO password",
+            arity = "0..1",
+            interactive = true
     )
     String password = null;
 
