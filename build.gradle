@@ -51,7 +51,7 @@ dependencies {
     implementation 'org.slf4j:slf4j-api:1.7.30'
     implementation 'org.slf4j:log4j-over-slf4j:1.7.30'
     implementation 'ch.qos.logback:logback-classic:1.2.3'
-    implementation 'info.picocli:picocli:3.9.3'
+    implementation 'info.picocli:picocli:4.3.2'
     testImplementation 'org.testng:testng:6.10'
 }
 

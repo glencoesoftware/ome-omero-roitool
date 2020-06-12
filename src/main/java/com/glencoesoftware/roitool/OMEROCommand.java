@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import Glacier2.CannotCreateSessionException;
 import Glacier2.PermissionDeniedException;
+import Ice.DNSException;
 import loci.common.services.DependencyException;
 import omero.ServerError;
 import picocli.CommandLine;
@@ -52,7 +53,9 @@ public abstract class OMEROCommand
 
     @CommandLine.Option(
             names = "--password",
-            description = "OMERO password"
+            description = "OMERO password",
+            arity = "0..1",
+            interactive = true
     )
     String password = null;
 
@@ -80,17 +83,23 @@ public abstract class OMEROCommand
                    CannotCreateSessionException, PermissionDeniedException
     {
         OMEOMEROConverter converter = new OMEOMEROConverter(imageId);
-        if (username != null)
-        {
-            converter.initialize(username, password, server, port, false);
+        try {
+            if (username != null)
+            {
+                converter.initialize(username, password, server, port, false);
+            }
+            else if (sessionKey != null)
+            {
+                converter.initialize(server, port, sessionKey);
+            }
+            else
+            {
+                log.error("No OMERO username/password or session key, can't run!");
+                return null;
+            }
         }
-        else if (sessionKey != null)
-        {
-            converter.initialize(server, port, sessionKey);
-        }
-        else
-        {
-            log.error("No OMERO username/password or session key, can't run!");
+        catch (DNSException e) {
+            log.error(server + " is not a valid OMERO server", e);
             return null;
         }
         return converter;
