@@ -297,8 +297,8 @@ qupath.lib.roi.interfaces.ROI importShape(PathROIObject path, int roiIdx, int sh
     return roi
 }
 
-(0..(roiCount - 1)).each { roiIdx ->
-
+roiIdx = 0
+while (roiIdx < roiCount) {
     def mapAnnotations = [:]
     def annotationCount = omexml.getROIAnnotationRefCount(roiIdx)
     if (annotationCount > 0) {
@@ -322,21 +322,14 @@ qupath.lib.roi.interfaces.ROI importShape(PathROIObject path, int roiIdx, int sh
     println("Shape count: " + omexml.getShapeCount(roiIdx))
     effectiveCount = omexml.getShapeCount(roiIdx)
 
-    // special case for cell detections
-    // if this ROI represents a detection and has exactly 2 shapes,
-    // then treat as a single cell where the first shape is the cell boundary
-    // and the second shape is the cell nucleus
-    if (mapAnnotations["qupath:is-detection"] == "true" && effectiveCount == 2) {
-       effectiveCount = 1
-    }
-
     (0..(effectiveCount - 1)).each { shapeIdx ->
 
         PathROIObject path
         if (mapAnnotations["qupath:is-detection"] == "true") {
-            if (omexml.getShapeCount(roiIdx) == 2) {
+            if (mapAnnotations["qupath:name"] == "cell boundary") {
                 path = new PathCellObject()
-            } else {
+            }
+            else {
                 path = new PathDetectionObject()
             }
         } else {
@@ -372,16 +365,18 @@ qupath.lib.roi.interfaces.ROI importShape(PathROIObject path, int roiIdx, int sh
             }
 
             // store the second shape as the cell nucleus
-            if (path instanceof PathCellObject) {
-               nucleusROI = importShape(path, roiIdx, shapeIdx + 1, className)
+            if (path.isCell() && effectiveCount == 1) {
+                roiIdx++
+                nucleusROI = importShape(path, roiIdx, shapeIdx, className)
 
-               // no setter for the nucleus ROI
-               path = new PathCellObject(roi, nucleusROI, path.getPathClass())
+                // no setter for the nucleus ROI
+                path = new PathCellObject(roi, nucleusROI, path.getPathClass())
             }
 
             newPathObjects.add(path)
         }
     }
+    roiIdx++
 }
 QPEx.getCurrentHierarchy().addPathObjects(newPathObjects)
 updatePathClasses()

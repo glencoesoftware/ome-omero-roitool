@@ -51,7 +51,6 @@ import qupath.lib.common.GeneralTools
 import qupath.lib.gui.dialogs.Dialogs
 import qupath.lib.gui.prefs.PathPrefs
 import qupath.lib.gui.scripting.QPEx
-import qupath.lib.objects.PathCellObject
 import qupath.lib.objects.PathROIObject
 import qupath.lib.roi.*
 
@@ -127,7 +126,44 @@ static void setCommonProperties(Shape shape, PathROIObject path, qupath.lib.roi.
     // shape.setStrokeDashArray()
 }
 
-void addShapeToUnion(qupath.lib.roi.interfaces.ROI roi, Union union, String shapeID, PathROIObject path) {
+void addROI(qupath.lib.roi.interfaces.ROI roi, PathROIObject path, int index) {
+    print(String.format("ROI type: %s", roi.class))
+    def mapAnnotationID = String.format("MapAnnotation-%s", index)
+    def shapeID = String.format("Shape:%s:%s", index, 0)
+    def roiID = String.format("ROI-%s", index)
+
+    // New ROI
+    def omeROI = new ROI()
+    omeROI.setID(roiID)
+    if (path.pathClass != null) {
+        omeROI.setName(path.pathClass.name)
+    }
+
+    // Map Annotation
+    def mapAnnotation = new MapAnnotation()
+    mapAnnotation.setID(mapAnnotationID)
+
+    // Add all the key-value pairs
+    def pairList = new ArrayList<MapPair>()
+    if (path.pathClass != null) {
+        pairList.add(new MapPair("qupath:class", path.pathClass.name))
+    }
+    if (path.getName()) {
+        pairList.add(new MapPair("qupath:name", path.getName()))
+    }
+    else if (path.isCell()) {
+        name = roi.equals(path.getNucleusROI()) ? "cell nucleus" : "cell boundary"
+        pairList.add(new MapPair("qupath:name", name))
+    }
+    pairList.add(new MapPair("qupath:is-annotation", path.isAnnotation().toString()))
+    pairList.add(new MapPair("qupath:is-detection", path.isDetection().toString()))
+    path.retrieveMetadataKeys().each {
+        pairList.add(new MapPair("qupath:metadata:" + it, path.retrieveMetadataValue(it).toString()))
+    }
+    mapAnnotation.setValue(pairList)
+
+    def union = new Union()
+
     // Instantiate the class of the shape from the type of ROI and set class specific properties
     switch (roi) {
         case EllipseROI:
@@ -263,63 +299,32 @@ void addShapeToUnion(qupath.lib.roi.interfaces.ROI roi, Union union, String shap
         default:
             print("Unsupported ROI type: " + roi)
     }
-}
-
-
-rois.eachWithIndex { PathROIObject path, int i ->
-    def roi = path.getROI()
-    print(String.format("ROI type: %s", roi.class))
-    def mapAnnotationID = String.format("MapAnnotation-%s", i)
-    def shapeID = String.format("Shape:%s:%s", i, 0)
-    def roiID = String.format("ROI-%s", i)
-
-    // New ROI
-    def omeROI = new ROI()
-    omeROI.setID(roiID)
-    if (path.pathClass != null) {
-        omeROI.setName(path.pathClass.name)
-    }
-
-    def union = new Union()
-
-    addShapeToUnion(roi, union, shapeID, path)
-
-    // PathCellObjects are the result of running a cell detection
-    // the result of getROI is the cell boundary
-    // the nucleus is defined as a separate ROI and should be included
-    // in the OME ROI as a separate shape
-    if (path instanceof PathCellObject) {
-        shapeID = String.format("Shape:%s:%s", i, 1)
-        addShapeToUnion(path.getNucleusROI(), union, shapeID, path)
-    }
 
     if (union.sizeOfShapeList() > 0) {
         omeROI.setUnion(union)
     }
 
-    // Map Annotation
-    def mapAnnotation = new MapAnnotation()
-    mapAnnotation.setID(mapAnnotationID)
-
-    // Add all the key-value pairs
-    def pairList = new ArrayList<MapPair>()
-    if (path.pathClass != null) {
-        pairList.add(new MapPair("qupath:class", path.pathClass.name))
-    }
-    if (path.getName()) {
-        pairList.add(new MapPair("qupath:name", path.getName()))
-    }
-    pairList.add(new MapPair("qupath:is-annotation", path.isAnnotation().toString()))
-    pairList.add(new MapPair("qupath:is-detection", path.isDetection().toString()))
-    path.retrieveMetadataKeys().each {
-        pairList.add(new MapPair("qupath:metadata:" + it, path.retrieveMetadataValue(it).toString()))
-    }
-    mapAnnotation.setValue(pairList)
-
     // Finalize ROI
     omeROI.linkAnnotation(mapAnnotation)
     ome.addROI(omeROI)
     structuredAnnotations.addMapAnnotation(mapAnnotation)
+}
+
+
+nextROI = 0
+rois.each { PathROIObject path ->
+    def roi = path.getROI()
+    addROI(roi, path, nextROI)
+    nextROI++
+
+    // PathCellObjects are the result of running a cell detection
+    // the result of getROI is the cell boundary
+    // the nucleus is defined as a separate ROI and should be included
+    // in the OME ROI as a separate shape
+    if (path.isCell() && path.hasNucleus()) {
+        addROI(path.getNucleusROI(), path, nextROI)
+        nextROI++
+    }
 }
 
 ome.setStructuredAnnotations(structuredAnnotations);
