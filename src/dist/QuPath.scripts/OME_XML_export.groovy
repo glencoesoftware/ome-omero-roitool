@@ -57,7 +57,7 @@ import qupath.lib.roi.*
 // first check the version; only 0.2.0-m10 and later are supported
 version = GeneralTools.getVersion()
 versionTokens = version.split("-")
-if (!versionTokens[0].equals("0.2.0") || (versionTokens.length == 2 && Integer.parseInt(versionTokens[1].substring(1)) < 10)) {
+if (versionTokens[0].startsWith("0.1") || (versionTokens.length == 2 && versionTokens[0].equals("0.2.0") && Integer.parseInt(versionTokens[1].substring(1)) < 10)) {
     throw new RuntimeException("Unsupported QuPath version: " + version)
 }
 
