@@ -25,6 +25,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,9 +47,12 @@ import omero.api.IConfigPrx;
 import omero.model.Annotation;
 import omero.model.IObject;
 import omero.model.Roi;
+import omero.model.XmlAnnotation;
 import omero.sys.ParametersI;
 
 public class OMEOMEROConverter {
+
+    private static final String PATHVIEWER_NS = "glencoesoftware.com/pathviewer/roi/settings";
 
     private static final Logger log =
             LoggerFactory.getLogger(OMEOMEROConverter.class);
@@ -138,20 +142,40 @@ public class OMEOMEROConverter {
         xmlMeta.createRoot();
         List<Roi> rois = getRois();
         List<Annotation> roiAnnotations = new ArrayList<Annotation>();
+        List<Roi> orderedRois = new ArrayList<Roi>(rois.size());
         for (final Roi roi : rois) {
-            roiAnnotations.addAll(getAnnotations(roi.getId().getValue()));
+            List<Annotation> currentAnnotations = getAnnotations(roi.getId().getValue());
+            roiAnnotations.addAll(currentAnnotations);
+
+            boolean foundIndex = false;
+            for (Annotation a : currentAnnotations) {
+                if (a instanceof XmlAnnotation && a.getNs().equals(PATHVIEWER_NS)) {
+                    // PathViewer-specific JSON
+
+                    JSONObject json = new JSONObject(((XmlAnnotation) a).getTextValue());
+                    String index = json.getString("displayIndex");
+                    if (index != null) {
+                        int roiIndex = Integer.parseInt(index);
+                        orderedRois.set(roiIndex, roi);
+                        foundIndex = true;
+                    }
+                }
+            }
+            if (!foundIndex) {
+                orderedRois.add(roi);
+            }
         }
         log.debug("Annotations: {}", roiAnnotations);
         log.info("Converting to OME-XML metadata");
         omeXmlService.convertMetadata(
-                new ROIMetadata(this::getLsid, rois), xmlMeta);
+                new ROIMetadata(this::getLsid, orderedRois), xmlMeta);
         omeXmlService.convertMetadata(
                 new AnnotationMetadata(this::getLsid, roiAnnotations), xmlMeta);
         log.info("ROI count: {}", xmlMeta.getROICount());
         log.info("Writing OME-XML to: {}", file.getAbsolutePath());
         XMLWriter xmlWriter = new XMLWriter();
         xmlWriter.writeFile(file, (OME) xmlMeta.getRoot(), false);
-        return rois;
+        return orderedRois;
     }
 
     /**
