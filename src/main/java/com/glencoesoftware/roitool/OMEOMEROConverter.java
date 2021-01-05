@@ -47,6 +47,7 @@ import omero.api.IConfigPrx;
 import omero.model.Annotation;
 import omero.model.IObject;
 import omero.model.Roi;
+import omero.model.Shape;
 import omero.model.XmlAnnotation;
 import omero.sys.ParametersI;
 
@@ -144,7 +145,7 @@ public class OMEOMEROConverter {
         List<Annotation> roiAnnotations = new ArrayList<Annotation>();
         List<Roi> orderedRois = new ArrayList<Roi>(rois.size());
         for (final Roi roi : rois) {
-            List<Annotation> currentAnnotations = getAnnotations(roi.getId().getValue());
+            List<Annotation> currentAnnotations = getAnnotations(roi);
             roiAnnotations.addAll(currentAnnotations);
 
             boolean foundIndex = false;
@@ -153,7 +154,8 @@ public class OMEOMEROConverter {
                     // PathViewer-specific JSON
 
                     JSONObject json = new JSONObject(((XmlAnnotation) a).getTextValue());
-                    String index = json.getString("displayIndex");
+                    //String index = json.getString("displayIndex");
+                    String index = null;
                     if (index != null) {
                         int roiIndex = Integer.parseInt(index);
                         orderedRois.set(roiIndex, roi);
@@ -219,17 +221,31 @@ public class OMEOMEROConverter {
         return rois;
     }
 
-    private List<Annotation> getAnnotations(long roiId) throws ServerError {
+    private List<Annotation> getAnnotations(Roi roi) throws ServerError {
         final List<Annotation> anns = new ArrayList<Annotation>();
+
+        // first get ROI-specific annotations
         for (final IObject result : target.getIQuery().findAllByQuery(
                 "SELECT DISTINCT a " +
                         "FROM RoiAnnotationLink as l " +
                         "JOIN l.child as a " +
                         "WHERE l.parent.id = :id",
-                new ParametersI().addId(roiId),
+                new ParametersI().addId(roi.getId().getValue()),
                 ALL_GROUPS_CONTEXT)) {
             anns.add((Annotation) result);
         };
+
+        // now get shape-specific annotations for each shape in the ROI (usually just one)
+        for (int i=0; i<roi.sizeOfShapes(); i++) {
+            Shape shape = roi.getShape(i);
+            for (final IObject result : target.getIQuery().findAllByQuery(
+                "SELECT DISTINCT a FROM ShapeAnnotationLink as l JOIN l.child as a WHERE l.parent.id = :id",
+                new ParametersI().addId(shape.getId().getValue()), ALL_GROUPS_CONTEXT))
+            {
+                anns.add((Annotation) result);
+            }
+        }
+
         return anns;
     }
 
