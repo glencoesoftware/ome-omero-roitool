@@ -45,6 +45,7 @@ import ome.xml.model.OME;
 import omero.ServerError;
 import omero.api.IConfigPrx;
 import omero.model.Annotation;
+import omero.model.Image;
 import omero.model.IObject;
 import omero.model.Roi;
 import omero.model.Shape;
@@ -141,6 +142,7 @@ public class OMEOMEROConverter {
         log.info("ROI export started");
         final OMEXMLMetadata xmlMeta = omeXmlService.createOMEXMLMetadata();
         xmlMeta.createRoot();
+        List<Image> images = getImages();
         List<Roi> rois = getRois();
         List<Annotation> roiAnnotations = new ArrayList<Annotation>();
         List<Roi> orderedRois = new ArrayList<Roi>(rois.size());
@@ -169,6 +171,8 @@ public class OMEOMEROConverter {
         }
         log.debug("Annotations: {}", roiAnnotations);
         log.info("Converting to OME-XML metadata");
+        omeXmlService.convertMetadata(
+                new ImageMetadata(this::getLsid, images), xmlMeta);
         omeXmlService.convertMetadata(
                 new ROIMetadata(this::getLsid, orderedRois), xmlMeta);
         omeXmlService.convertMetadata(
@@ -219,6 +223,33 @@ public class OMEOMEROConverter {
             rois.add((Roi) result);
         }
         return rois;
+    }
+
+    /**
+     * Query the server for the current image.
+     * Ported from <code>org.openmicroscopy.client.downloader.XmlGenerator</code>
+     * @return a list containing the current image
+     * @throws ServerError if the image could not be retrieved
+     */
+    private List<Image> getImages() throws ServerError {
+        final List<Image> images = new ArrayList<Image>();
+        for (final IObject result : target.getIQuery().findAllByQuery(
+                "FROM Image i " +
+                "LEFT OUTER JOIN FETCH i.pixels AS p " +
+                "LEFT OUTER JOIN FETCH p.channels AS c " +
+                "LEFT OUTER JOIN FETCH c.logicalChannel AS l " +
+                "LEFT OUTER JOIN FETCH p.pixelsType " +
+                "LEFT OUTER JOIN FETCH p.planeInfo " +
+                "LEFT OUTER JOIN FETCH l.illumination " +
+                "LEFT OUTER JOIN FETCH l.mode " +
+                "LEFT OUTER JOIN FETCH p.details.updateEvent " +
+                "LEFT OUTER JOIN FETCH c.details.updateEvent " +
+                "WHERE i.id = :id",
+                new ParametersI().addId(imageId), ALL_GROUPS_CONTEXT))
+        {
+            images.add((Image) result);
+        }
+        return images;
     }
 
     private List<Annotation> getAnnotations(Roi roi) throws ServerError {
