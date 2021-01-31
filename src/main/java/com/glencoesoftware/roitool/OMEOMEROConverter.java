@@ -25,6 +25,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +55,7 @@ import omero.sys.ParametersI;
 
 public class OMEOMEROConverter {
 
-    private static final String PATHVIEWER_NS = "glencoesoftware.com/pathviewer/roi/settings";
+    private static final String PATHVIEWER_NS = "glencoesoftware.com/pathviewer/roidisplayorder";
 
     private static final Logger log =
             LoggerFactory.getLogger(OMEOMEROConverter.class);
@@ -144,39 +145,59 @@ public class OMEOMEROConverter {
         xmlMeta.createRoot();
         List<Image> images = getImages();
         List<Roi> rois = getRois();
-        List<Annotation> roiAnnotations = new ArrayList<Annotation>();
         List<Roi> orderedRois = new ArrayList<Roi>(rois.size());
+
+        List<Annotation> allAnnotations = new ArrayList<Annotation>();
+        for (final Image img : images) {
+            allAnnotations.addAll(getAnnotations(img));
+        }
         for (final Roi roi : rois) {
             List<Annotation> currentAnnotations = getAnnotations(roi);
-            roiAnnotations.addAll(currentAnnotations);
+            allAnnotations.addAll(currentAnnotations);
+        }
 
-            boolean foundIndex = false;
-            for (Annotation a : currentAnnotations) {
-                if (a instanceof XmlAnnotation && a.getNs().equals(PATHVIEWER_NS)) {
-                    // PathViewer-specific JSON
+        boolean foundIndex = false;
+        for (final Annotation ann : allAnnotations) {
+            if (ann instanceof XmlAnnotation && ann.getNs() != null &&
+                ann.getNs().getValue().equals(PATHVIEWER_NS))
+            {
+                // PathViewer-specific JSON
 
-                    JSONObject json = new JSONObject(((XmlAnnotation) a).getTextValue());
-                    //String index = json.getString("displayIndex");
-                    String index = null;
-                    if (index != null) {
-                        int roiIndex = Integer.parseInt(index);
-                        orderedRois.set(roiIndex, roi);
-                        foundIndex = true;
+                JSONObject json = new JSONObject(((XmlAnnotation) ann).getTextValue().getValue());
+                JSONArray shapeIds = json.getJSONArray("displayorder");
+                for (int i=0; i<shapeIds.length(); i++) {
+                    long shapeId = shapeIds.getLong(i);
+                    int roiIndex = -1;
+                    for (int r=0; r<rois.size(); r++) {
+                        Roi roi = rois.get(r);
+                        if (roi.getShape(0).getId().getValue() == shapeId) {
+                            roiIndex = r;
+                            break;
+                        }
+                    }
+                    if (roiIndex >= 0) {
+                        orderedRois.add(rois.get(roiIndex));
+                    }
+                    else {
+                        orderedRois.add(null);
                     }
                 }
-            }
-            if (!foundIndex) {
-                orderedRois.add(roi);
+                foundIndex = true;
+                break;
             }
         }
-        log.debug("Annotations: {}", roiAnnotations);
+        if (!foundIndex) {
+            orderedRois.addAll(rois);
+        }
+
+        log.debug("Annotations: {}", allAnnotations);
         log.info("Converting to OME-XML metadata");
         omeXmlService.convertMetadata(
                 new ImageMetadata(this::getLsid, images), xmlMeta);
         omeXmlService.convertMetadata(
                 new ROIMetadata(this::getLsid, orderedRois), xmlMeta);
         omeXmlService.convertMetadata(
-                new AnnotationMetadata(this::getLsid, roiAnnotations), xmlMeta);
+                new AnnotationMetadata(this::getLsid, allAnnotations), xmlMeta);
         log.info("ROI count: {}", xmlMeta.getROICount());
         log.info("Writing OME-XML to: {}", file.getAbsolutePath());
         XMLWriter xmlWriter = new XMLWriter();
@@ -250,6 +271,22 @@ public class OMEOMEROConverter {
             images.add((Image) result);
         }
         return images;
+    }
+
+    private List<Annotation> getAnnotations(Image image) throws ServerError {
+        final List<Annotation> anns = new ArrayList<Annotation>();
+
+        for (final IObject result : target.getIQuery().findAllByQuery(
+                "SELECT DISTINCT a " +
+                        "FROM ImageAnnotationLink as l " +
+                        "JOIN l.child as a " +
+                        "WHERE l.parent.id = :id",
+                new ParametersI().addId(image.getId().getValue()),
+                ALL_GROUPS_CONTEXT)) {
+            anns.add((Annotation) result);
+        };
+
+        return anns;
     }
 
     private List<Annotation> getAnnotations(Roi roi) throws ServerError {
