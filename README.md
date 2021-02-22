@@ -120,7 +120,7 @@ Export ROIs to an OME-XML file from an OMERO server
 #### Example
 
 ```
-$ ome-omero-roitool import --server localhost --username test --password test 30101 test.ome.xml
+$ ome-omero-roitool export --server localhost --username test --password test 30101 test.ome.xml
 11:43:46.728 [main] INFO com.glencoesoftware.roitool.Main - ROI tool 0.1.0-SNAPSHOT started
 11:43:46.987 [main] INFO ome.formats.OMEROMetadataStoreClient - Attempting initial SSL connection to localhost:4064
 11:43:49.566 [main] INFO ome.formats.OMEROMetadataStoreClient - Insecure connection requested, falling back
