@@ -48,6 +48,7 @@ import omero.api.IConfigPrx;
 import omero.model.Annotation;
 import omero.model.Image;
 import omero.model.IObject;
+import omero.model.Mask;
 import omero.model.Roi;
 import omero.model.Shape;
 import omero.model.XmlAnnotation;
@@ -176,7 +177,10 @@ public class OMEOMEROConverter {
                         }
                     }
                     if (roiIndex >= 0) {
-                        orderedRois.add(rois.get(roiIndex));
+                        Roi toAdd = rois.get(roiIndex);
+                        if (!Mask.class.isAssignableFrom(toAdd.getShape(0).getClass())) {
+                            orderedRois.add(toAdd);
+                        }
                     }
                     else {
                         orderedRois.add(null);
@@ -187,7 +191,11 @@ public class OMEOMEROConverter {
             }
         }
         if (!foundIndex) {
-            orderedRois.addAll(rois);
+            for (Roi r : rois) {
+                if (!Mask.class.isAssignableFrom(r.getShape(0).getClass())) {
+                    orderedRois.add(r);
+                }
+            }
         }
 
         log.debug("Annotations: {}", allAnnotations);
