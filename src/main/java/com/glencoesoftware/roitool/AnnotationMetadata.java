@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
+import loci.common.xml.XMLTools;
+
 import ome.xml.model.MapPair;
 import ome.xml.model.primitives.Timestamp;
 
@@ -187,7 +189,8 @@ public class AnnotationMetadata extends MetadataBase {
     {
         XmlAnnotation o = getAnnotation(
                 XmlAnnotation.class, XMLAnnotationIndex);
-        return o != null? fromRType(o.getTextValue()) : null;
+        String v = o != null? fromRType(o.getTextValue()) : null;
+        return XMLTools.escapeXML(v);
     }
 
     @Override

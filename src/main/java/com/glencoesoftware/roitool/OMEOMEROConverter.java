@@ -25,6 +25,8 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,11 +46,17 @@ import ome.xml.model.OME;
 import omero.ServerError;
 import omero.api.IConfigPrx;
 import omero.model.Annotation;
+import omero.model.Image;
 import omero.model.IObject;
+import omero.model.Mask;
 import omero.model.Roi;
+import omero.model.Shape;
+import omero.model.XmlAnnotation;
 import omero.sys.ParametersI;
 
 public class OMEOMEROConverter {
+
+    private static final String PATHVIEWER_NS = "glencoesoftware.com/pathviewer/roidisplayorder";
 
     private static final Logger log =
             LoggerFactory.getLogger(OMEOMEROConverter.class);
@@ -136,22 +144,73 @@ public class OMEOMEROConverter {
         log.info("ROI export started");
         final OMEXMLMetadata xmlMeta = omeXmlService.createOMEXMLMetadata();
         xmlMeta.createRoot();
+        List<Image> images = getImages();
         List<Roi> rois = getRois();
-        List<Annotation> roiAnnotations = new ArrayList<Annotation>();
-        for (final Roi roi : rois) {
-            roiAnnotations.addAll(getAnnotations(roi.getId().getValue()));
+        List<Roi> orderedRois = new ArrayList<Roi>(rois.size());
+
+        List<Annotation> allAnnotations = new ArrayList<Annotation>();
+        for (final Image img : images) {
+            allAnnotations.addAll(getAnnotations(img));
         }
-        log.debug("Annotations: {}", roiAnnotations);
+        for (final Roi roi : rois) {
+            List<Annotation> currentAnnotations = getAnnotations(roi);
+            allAnnotations.addAll(currentAnnotations);
+        }
+
+        boolean foundIndex = false;
+        for (final Annotation ann : allAnnotations) {
+            if (ann instanceof XmlAnnotation && ann.getNs() != null &&
+                ann.getNs().getValue().equals(PATHVIEWER_NS))
+            {
+                // PathViewer-specific JSON
+
+                JSONObject json = new JSONObject(((XmlAnnotation) ann).getTextValue().getValue());
+                JSONArray shapeIds = json.getJSONArray("displayorder");
+                for (int i=0; i<shapeIds.length(); i++) {
+                    long shapeId = shapeIds.getLong(i);
+                    int roiIndex = -1;
+                    for (int r=0; r<rois.size(); r++) {
+                        Roi roi = rois.get(r);
+                        if (roi.getShape(0).getId().getValue() == shapeId) {
+                            roiIndex = r;
+                            break;
+                        }
+                    }
+                    if (roiIndex >= 0) {
+                        Roi toAdd = rois.get(roiIndex);
+                        if (!Mask.class.isAssignableFrom(toAdd.getShape(0).getClass())) {
+                            orderedRois.add(toAdd);
+                        }
+                    }
+                    else {
+                        orderedRois.add(null);
+                    }
+                }
+                foundIndex = true;
+                break;
+            }
+        }
+        if (!foundIndex) {
+            for (Roi r : rois) {
+                if (!Mask.class.isAssignableFrom(r.getShape(0).getClass())) {
+                    orderedRois.add(r);
+                }
+            }
+        }
+
+        log.debug("Annotations: {}", allAnnotations);
         log.info("Converting to OME-XML metadata");
         omeXmlService.convertMetadata(
-                new ROIMetadata(this::getLsid, rois), xmlMeta);
+                new ImageMetadata(this::getLsid, images), xmlMeta);
         omeXmlService.convertMetadata(
-                new AnnotationMetadata(this::getLsid, roiAnnotations), xmlMeta);
+                new ROIMetadata(this::getLsid, orderedRois), xmlMeta);
+        omeXmlService.convertMetadata(
+                new AnnotationMetadata(this::getLsid, allAnnotations), xmlMeta);
         log.info("ROI count: {}", xmlMeta.getROICount());
         log.info("Writing OME-XML to: {}", file.getAbsolutePath());
         XMLWriter xmlWriter = new XMLWriter();
         xmlWriter.writeFile(file, (OME) xmlMeta.getRoot(), false);
-        return rois;
+        return orderedRois;
     }
 
     /**
@@ -195,17 +254,74 @@ public class OMEOMEROConverter {
         return rois;
     }
 
-    private List<Annotation> getAnnotations(long roiId) throws ServerError {
+    /**
+     * Query the server for the current image.
+     * Ported from <code>org.openmicroscopy.client.downloader.XmlGenerator</code>
+     * @return a list containing the current image
+     * @throws ServerError if the image could not be retrieved
+     */
+    private List<Image> getImages() throws ServerError {
+        final List<Image> images = new ArrayList<Image>();
+        for (final IObject result : target.getIQuery().findAllByQuery(
+                "FROM Image i " +
+                "LEFT OUTER JOIN FETCH i.pixels AS p " +
+                "LEFT OUTER JOIN FETCH p.channels AS c " +
+                "LEFT OUTER JOIN FETCH c.logicalChannel AS l " +
+                "LEFT OUTER JOIN FETCH p.pixelsType " +
+                "LEFT OUTER JOIN FETCH p.planeInfo " +
+                "LEFT OUTER JOIN FETCH l.illumination " +
+                "LEFT OUTER JOIN FETCH l.mode " +
+                "LEFT OUTER JOIN FETCH p.details.updateEvent " +
+                "LEFT OUTER JOIN FETCH c.details.updateEvent " +
+                "WHERE i.id = :id",
+                new ParametersI().addId(imageId), ALL_GROUPS_CONTEXT))
+        {
+            images.add((Image) result);
+        }
+        return images;
+    }
+
+    private List<Annotation> getAnnotations(Image image) throws ServerError {
         final List<Annotation> anns = new ArrayList<Annotation>();
+
+        for (final IObject result : target.getIQuery().findAllByQuery(
+                "SELECT DISTINCT a " +
+                        "FROM ImageAnnotationLink as l " +
+                        "JOIN l.child as a " +
+                        "WHERE l.parent.id = :id",
+                new ParametersI().addId(image.getId().getValue()),
+                ALL_GROUPS_CONTEXT)) {
+            anns.add((Annotation) result);
+        };
+
+        return anns;
+    }
+
+    private List<Annotation> getAnnotations(Roi roi) throws ServerError {
+        final List<Annotation> anns = new ArrayList<Annotation>();
+
+        // first get ROI-specific annotations
         for (final IObject result : target.getIQuery().findAllByQuery(
                 "SELECT DISTINCT a " +
                         "FROM RoiAnnotationLink as l " +
                         "JOIN l.child as a " +
                         "WHERE l.parent.id = :id",
-                new ParametersI().addId(roiId),
+                new ParametersI().addId(roi.getId().getValue()),
                 ALL_GROUPS_CONTEXT)) {
             anns.add((Annotation) result);
         };
+
+        // now get shape-specific annotations for each shape in the ROI (usually just one)
+        for (int i=0; i<roi.sizeOfShapes(); i++) {
+            Shape shape = roi.getShape(i);
+            for (final IObject result : target.getIQuery().findAllByQuery(
+                "SELECT DISTINCT a FROM ShapeAnnotationLink as l JOIN l.child as a WHERE l.parent.id = :id",
+                new ParametersI().addId(shape.getId().getValue()), ALL_GROUPS_CONTEXT))
+            {
+                anns.add((Annotation) result);
+            }
+        }
+
         return anns;
     }
 
