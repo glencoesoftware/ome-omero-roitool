@@ -153,6 +153,22 @@ Using Gradle run the unit tests:
 
     ./gradlew test
 
+Note there are currently no unit tests. Basic functional test scenarios are:
+
+1. OMERO export/QuPath import
+   a. Draw a set of ROIs on an OMERO image, or select an OMERO image with existing ROIs.
+   b. Run ```ome-omero-roitool export``` on the selected OMERO image as described above
+   c. Open QuPath and run the ```OME_XML_import.groovy``` script as described below,
+      choosing the OME-XML file created in (b).
+   d. Verify that the ROIs shown in QuPath match the ROIs in OMERO.
+2. QuPath export/OMERO import
+   a. Open an image in QuPath and draw a set of ROIs.
+   b. Run the ```OME_XML_export.groovy``` script as described below.
+   c. Import the image file from (a) into OMERO.
+   d. Run ```ome-omero-roitool import``` as described above, using the image ID from (c)
+      and OME-XML selected in (b).
+   e. Verify that the ROIs shown in OMERO match the ROIs drawn in QuPath.
+
 ## Eclipse Configuration
 
 1. Run the Gradle Eclipse task::
