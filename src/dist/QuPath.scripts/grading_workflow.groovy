@@ -31,6 +31,8 @@
  *   - Click "Yes" to clear the annotation class list
  *   - When prompted, choose the OME-XML import script
  *   - Choose the OME-XML ROI file
+ *
+ * Requires QuPath 0.2.0-m10 or later.
  */
 
 import javafx.application.Platform
@@ -40,6 +42,8 @@ import qupath.lib.objects.classes.PathClassFactory
 gradingWorkflow()
 
 void gradingWorkflow() {
+    // omitting this will cause the QuPath GUI to freeze, see
+    // https://docs.oracle.com/javafx/2/threads/jfxpub-threads.htm
     if (!Platform.isFxApplicationThread()) {
         Platform.runLater({ gradingWorkflow() })
         return

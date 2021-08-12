@@ -69,7 +69,7 @@ public abstract class OMEROCommand
      * Creates an OME OMERO converter which will be initialized with the
      * server, port, and session key or username/password pair available to
      * this class
-     * @param imageId OMERO Image ID to export ROIs from
+     * @param imageId OMERO Image ID to import to or export from
      * @return Initialized OME OMERO converter
      * @throws ServerError If there is an error communicating with OMERO
      * during initialization

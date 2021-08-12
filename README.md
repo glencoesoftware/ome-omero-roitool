@@ -117,6 +117,11 @@ Export ROIs to an OME-XML file from an OMERO server
                            OMERO user name
 ```
 
+If the exported objects have an associated JSON annotation with the namespace ```glencoesoftware.com/pathviewer/roidisplayorder```,
+this will affect the order in which ROIs are written.  As the namespace suggests, this annotation is written by PathViewer.
+
+Masks, if present, will not be exported to OME-XML.
+
 #### Example
 
 ```
@@ -154,8 +159,19 @@ Using Gradle run the unit tests:
 
     ./gradlew eclipse
 
+## Development notes
+
+Most of the actual import/export logic is in ```OMEOMEROConverter```.
+The bulk of the metadata classes are copies of classes in https://github.com/ome/omero-downloader,
+see https://github.com/ome/omero-downloader/issues/27 for details.
 
 # QuPath scripts
+
+Before reading or modifying these scripts, some familiarity with QuPath's scripting features and object model is useful:
+
+* https://qupath.readthedocs.io/en/stable/docs/scripting/overview.html
+* https://qupath.readthedocs.io/en/stable/docs/concepts/objects.html
+* https://qupath.readthedocs.io/en/stable/docs/concepts/classifications.html
 
 ## Requirements
 

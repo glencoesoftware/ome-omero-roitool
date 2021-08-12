@@ -24,10 +24,13 @@
  * to an OME-XML file.
  *
  * Instructions:
- *   - Open the QuPath file containing the ROIs to be exported
+ *   - Open the QuPath file containing the ROIs to be exported, or draw ROIs
+ *     on an open image
  *   - Open this file in the QuPath "Script editor"
  *   - Choose "Run" from the Run menu
  *   - When prompted, choose the location and filename for the exported OME-XML
+ *
+ * Requires QuPath 0.2.0-m10 or later.
  */
 
 
@@ -320,7 +323,9 @@ rois.each { PathROIObject path ->
     // PathCellObjects are the result of running a cell detection
     // the result of getROI is the cell boundary
     // the nucleus is defined as a separate ROI and should be included
-    // in the OME ROI as a separate shape
+    // as a separate OME ROI
+    // ideally this would be modelled as two shapes in the same OME ROI,
+    // but this isn't supported by all downstream applications
     if (path.isCell() && path.hasNucleus()) {
         addROI(path.getNucleusROI(), path, nextROI)
         nextROI++

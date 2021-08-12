@@ -92,12 +92,11 @@ public class ROIMetadataStoreClient extends OMEROMetadataStoreClient {
         log.debug("Starting containers....");
         for (LSID key : this.getContainerCache().keySet())
         {
-            String s = String.format("%s == %s,%s,%s,%s",
+            log.debug("{} == {},{},{},{}",
                     key, this.getContainerCache().get(key).sourceObject,
                     this.getContainerCache().get(key).sourceObject.getId(),
                     this.getContainerCache().get(key).sourceObject.isLoaded(),
                     this.getContainerCache().get(key).LSID);
-            log.debug(s);
         }
         // Reference check
         log.debug("Starting references....");
@@ -105,14 +104,12 @@ public class ROIMetadataStoreClient extends OMEROMetadataStoreClient {
         {
             for (String value : this.getReferenceStringCache().get(key))
             {
-                String s = String.format("%s == %s", key, value);
-                log.debug(s);
+                log.debug("{} == {}", key, value);
             }
         }
-        log.debug("containerCache contains " + this.getContainerCache().size()
-                  + " entries.");
-        log.debug("referenceCache contains " + countCachedReferences(null, null)
-                  + " entries.");
+        log.debug("containerCache contains {} entries.", this.getContainerCache().size());
+        log.debug("referenceCache contains {} entries.", + countCachedReferences(null, null));
+
         // Object updates
         log.debug("Handling # of containers: {}", containerArray.length);
         for (IObjectContainer container : containerArray)
@@ -123,9 +120,7 @@ public class ROIMetadataStoreClient extends OMEROMetadataStoreClient {
                               container.indexes);
         }
         // Reference updates
-        String[] referenceKeys = this.getReferenceStringCache().keySet()
-                .toArray(new String[this.getReferenceStringCache().size()]);
-        log.debug("Handling # of references: {}", referenceKeys.length);
+        log.debug("Handling # of references: {}", getReferenceStringCache().size());
         this.updateReferences(this.getReferenceStringCache());
 
         // get the group ID
@@ -321,7 +316,6 @@ public class ROIMetadataStoreClient extends OMEROMetadataStoreClient {
     @Override
     public void setROIName(String name, int ROIIndex)
     {
-        
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.ROI_INDEX, ROIIndex);
