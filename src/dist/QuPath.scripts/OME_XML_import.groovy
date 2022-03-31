@@ -30,6 +30,8 @@
  *   - When prompted, choose the OME-XML file to import
  *   - If the imported ROIs contain more than one value of stroke width, you will
  *     be prompted for which value to use for all annotations and/or detections
+ *
+ * Requires QuPath 0.2.0-m10 or later.
  */
 
 
@@ -406,6 +408,10 @@ Integer getIndex(String roiName) {
     return 1;
 }
 
+
+// prompt for line widths
+// QuPath annotations and detections can each have separate widths,
+// but individual shapes cannot
 void chooseLineWidths() {
 
     new JFXPanel()

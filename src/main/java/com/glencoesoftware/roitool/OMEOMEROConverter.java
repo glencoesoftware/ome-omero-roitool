@@ -56,20 +56,43 @@ import omero.sys.ParametersI;
 
 public class OMEOMEROConverter {
 
+    /**
+     * Namespace for the PathViewer annotation that controls ROI display order.
+     */
     private static final String PATHVIEWER_NS = "glencoesoftware.com/pathviewer/roidisplayorder";
 
     private static final Logger log =
             LoggerFactory.getLogger(OMEOMEROConverter.class);
 
+    /**
+     * Default context which looks for the requested Image/ROI in all groups
+     * that the user is a member of. This means that the user can specify an
+     * Image ID only for import/export, without providing the corresponding group ID.
+     * Omitting this context would query in the user's default group only.
+     */
     public static final ImmutableMap<String, String> ALL_GROUPS_CONTEXT =
             ImmutableMap.of(Login.OMERO_GROUP, "-1");
 
+    /**
+     * OMERO Image ID for import/export.
+     */
     private final long imageId;
 
+    /**
+     * Provides communication with OMERO.
+     */
     private final ROIMetadataStoreClient target;
 
+    /**
+     * Helper service for translating between OMERO and OME objects.
+     */
     private final OMEXMLService omeXmlService;
 
+    /**
+     * LSID format associated with the current OMERO database.
+     * See https://docs.openmicroscopy.org/omero/5.6.3/sysadmins/config.html#omero-db-authority
+     * and https://downloads.openmicroscopy.org/omero/5.4.0/api/ome/services/db/DatabaseIdentity.html
+     */
     private String lsidFormat;
 
     public OMEOMEROConverter(long imageId)
@@ -80,6 +103,17 @@ public class OMEOMEROConverter {
         this.omeXmlService = factory.getInstance(OMEXMLService.class);
     }
 
+    /**
+     * Log in to OMERO with the specified credentials.
+     *
+     * @param username OMERO username or session key
+     * @param password OMERO password or session key
+     * @param server OMERO server URL
+     * @param port OMERO server port
+     * @param detachOnDestroy detach the session so that the key can be reused,
+     *                        this should be true if a session key is passed in
+     *                        instead of username and password
+     */
     public void initialize(
             String username, String password, String server, int port,
             boolean detachOnDestroy)
@@ -96,6 +130,13 @@ public class OMEOMEROConverter {
                 iConfig.getDatabaseUuid());
     }
 
+    /**
+     * Log in to OMERO with an existing session key.
+     *
+     * @param server OMERO server URL
+     * @param port OMERO server port
+     * @param sessionKey existing session key to be reused
+     */
     public void initialize(String server, int port, String sessionKey)
             throws CannotCreateSessionException, PermissionDeniedException,
                    ServerError
@@ -103,13 +144,21 @@ public class OMEOMEROConverter {
         initialize(sessionKey, sessionKey, server, port, true);
     }
 
+    /**
+     * Import ROIs from the given file.
+     * A valid session must have already been established using one of the
+     * initialize(...) methods.
+     *
+     * @param input OME-XML containing ROIs
+     * @return list of ROI objects imported, or null
+     */
     public List<IObject> importRoisFromFile(File input)
             throws IOException, MissingLibraryException
     {
         log.info("ROI import started");
         String xml = new String(
                 Files.readAllBytes(input.toPath()), StandardCharsets.UTF_8);
-            log.debug("Importing OME-XML: {}", xml);
+        log.debug("Importing OME-XML: {}", xml);
 
         OMEXMLMetadata xmlMeta;
         try {
@@ -139,6 +188,14 @@ public class OMEOMEROConverter {
         return null;
     }
 
+    /**
+     * Export all ROIs associated with the selected Image ID to the given file.
+     * If an ordering annotation is present, it will affect the ROI export order.
+     * Mask ROIs are omitted from all exports.
+     *
+     * @param file output OME-XML file
+     * @return list of exported ROIs
+     */
     public List<? extends IObject> exportRoisToFile(File file)
             throws Exception {
         log.info("ROI export started");
@@ -148,6 +205,7 @@ public class OMEOMEROConverter {
         List<Roi> rois = getRois();
         List<Roi> orderedRois = new ArrayList<Roi>(rois.size());
 
+        // get all annotations associated with the Image and its ROIs
         List<Annotation> allAnnotations = new ArrayList<Annotation>();
         for (final Image img : images) {
             allAnnotations.addAll(getAnnotations(img));
@@ -163,6 +221,7 @@ public class OMEOMEROConverter {
                 ann.getNs().getValue().equals(PATHVIEWER_NS))
             {
                 // PathViewer-specific JSON
+                // if a valid displayorder annotation exists, reorder the list of ROIs accordingly
 
                 JSONObject json = new JSONObject(((XmlAnnotation) ann).getTextValue().getValue());
                 JSONArray shapeIds = json.getJSONArray("displayorder");
@@ -200,6 +259,9 @@ public class OMEOMEROConverter {
 
         log.debug("Annotations: {}", allAnnotations);
         log.info("Converting to OME-XML metadata");
+        // translate Image, ROI, and annotation data from OMERO objects to OME objects
+        // keeping the Image and annotation data makes it easier to use the OME-XML in
+        // downstream applications
         omeXmlService.convertMetadata(
                 new ImageMetadata(this::getLsid, images), xmlMeta);
         omeXmlService.convertMetadata(
@@ -281,6 +343,12 @@ public class OMEOMEROConverter {
         return images;
     }
 
+    /**
+     * Fetch all annotations associated with a particular Image.
+     *
+     * @param image OMERO Image
+     * @return list of linked annotations
+     */
     private List<Annotation> getAnnotations(Image image) throws ServerError {
         final List<Annotation> anns = new ArrayList<Annotation>();
 
@@ -297,6 +365,12 @@ public class OMEOMEROConverter {
         return anns;
     }
 
+    /**
+     * Fetch all annotations associated with a particular ROI and its Shapes.
+     *
+     * @param roi OMERO Roi
+     * @return list of linked annotations
+     */
     private List<Annotation> getAnnotations(Roi roi) throws ServerError {
         final List<Annotation> anns = new ArrayList<Annotation>();
 
@@ -325,6 +399,9 @@ public class OMEOMEROConverter {
         return anns;
     }
 
+    /**
+     * Log out of the current session.
+     */
     public void close()
     {
         if (this.target != null)
