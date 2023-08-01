@@ -333,6 +333,7 @@ public class OMEOMEROConverter {
                 "LEFT OUTER JOIN FETCH p.planeInfo " +
                 "LEFT OUTER JOIN FETCH l.illumination " +
                 "LEFT OUTER JOIN FETCH l.mode " +
+                "LEFT OUTER JOIN FETCH l.contrastMethod " +
                 "LEFT OUTER JOIN FETCH p.details.updateEvent " +
                 "LEFT OUTER JOIN FETCH c.details.updateEvent " +
                 "WHERE i.id = :id",
