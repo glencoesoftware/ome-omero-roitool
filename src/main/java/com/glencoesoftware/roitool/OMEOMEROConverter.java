@@ -262,8 +262,13 @@ public class OMEOMEROConverter {
         // translate Image, ROI, and annotation data from OMERO objects to OME objects
         // keeping the Image and annotation data makes it easier to use the OME-XML in
         // downstream applications
-        omeXmlService.convertMetadata(
-                new ImageMetadata(this::getLsid, images), xmlMeta);
+        try {
+            omeXmlService.convertMetadata(
+                    new ImageMetadata(this::getLsid, images), xmlMeta);
+        }
+        catch (Exception e) {
+            log.warn("Failed to fully convert image metadata", e);
+        }
         omeXmlService.convertMetadata(
                 new ROIMetadata(this::getLsid, orderedRois), xmlMeta);
         omeXmlService.convertMetadata(
@@ -333,6 +338,7 @@ public class OMEOMEROConverter {
                 "LEFT OUTER JOIN FETCH p.planeInfo " +
                 "LEFT OUTER JOIN FETCH l.illumination " +
                 "LEFT OUTER JOIN FETCH l.mode " +
+                "LEFT OUTER JOIN FETCH l.contrastMethod " +
                 "LEFT OUTER JOIN FETCH p.details.updateEvent " +
                 "LEFT OUTER JOIN FETCH c.details.updateEvent " +
                 "WHERE i.id = :id",
