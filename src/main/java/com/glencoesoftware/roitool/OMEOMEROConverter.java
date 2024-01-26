@@ -42,6 +42,7 @@ import loci.formats.services.OMEXMLService;
 import ome.specification.XMLWriter;
 import ome.system.Login;
 import ome.xml.meta.MetadataConverter;
+import ome.xml.meta.OMEXMLMetadataRoot;
 import ome.xml.model.OME;
 import omero.ServerError;
 import omero.api.IConfigPrx;
@@ -163,6 +164,13 @@ public class OMEOMEROConverter {
         OMEXMLMetadata xmlMeta;
         try {
             xmlMeta = omeXmlService.createOMEXMLMetadata(xml);
+
+            OMEXMLMetadataRoot root = (OMEXMLMetadataRoot) xmlMeta.getRoot();
+            List<ome.xml.model.Image> images = root.copyImageList();
+            for (ome.xml.model.Image img : images) {
+                root.removeImage(img);
+            }
+
             log.info("Converting to OMERO metadata");
             MetadataConverter.convertMetadata(xmlMeta, target);
             log.info("ROI count: {}", xmlMeta.getROICount());
