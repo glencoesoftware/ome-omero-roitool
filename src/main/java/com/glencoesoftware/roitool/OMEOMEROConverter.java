@@ -47,6 +47,7 @@ import ome.xml.model.Dataset;
 import ome.xml.model.Experiment;
 import ome.xml.model.Experimenter;
 import ome.xml.model.ExperimenterGroup;
+import ome.xml.model.Folder;
 import ome.xml.model.Instrument;
 import ome.xml.model.OME;
 import ome.xml.model.Plate;
@@ -469,6 +470,10 @@ public class OMEOMEROConverter {
         List<Instrument> instruments = root.copyInstrumentList();
         for (Instrument i : instruments) {
             root.removeInstrument(i);
+        }
+        List<Folder> folders = root.copyFolderList();
+        for (Folder f : folders) {
+            root.removeFolder(f);
         }
     }
 
