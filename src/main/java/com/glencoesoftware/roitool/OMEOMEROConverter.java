@@ -42,7 +42,17 @@ import loci.formats.services.OMEXMLService;
 import ome.specification.XMLWriter;
 import ome.system.Login;
 import ome.xml.meta.MetadataConverter;
+import ome.xml.meta.OMEXMLMetadataRoot;
+import ome.xml.model.Dataset;
+import ome.xml.model.Experiment;
+import ome.xml.model.Experimenter;
+import ome.xml.model.ExperimenterGroup;
+import ome.xml.model.Folder;
+import ome.xml.model.Instrument;
 import ome.xml.model.OME;
+import ome.xml.model.Plate;
+import ome.xml.model.Project;
+import ome.xml.model.Screen;
 import omero.ServerError;
 import omero.api.IConfigPrx;
 import omero.model.Annotation;
@@ -163,6 +173,8 @@ public class OMEOMEROConverter {
         OMEXMLMetadata xmlMeta;
         try {
             xmlMeta = omeXmlService.createOMEXMLMetadata(xml);
+            removeExtraMetadata(xmlMeta);
+
             log.info("Converting to OMERO metadata");
             MetadataConverter.convertMetadata(xmlMeta, target);
             log.info("ROI count: {}", xmlMeta.getROICount());
@@ -413,6 +425,55 @@ public class OMEOMEROConverter {
         if (this.target != null)
         {
             this.target.logout();
+        }
+    }
+
+    /**
+     * Remove everything apart from ROIs and StructuredAnnotations.
+     * Image, Plate, Dataset, Experiment, etc. will all be removed
+     * before sending to OMERO.
+     */
+    private void removeExtraMetadata(OMEXMLMetadata xmlMeta) {
+        OMEXMLMetadataRoot root = (OMEXMLMetadataRoot) xmlMeta.getRoot();
+        List<ome.xml.model.Image> images = root.copyImageList();
+        for (ome.xml.model.Image img : images) {
+            root.removeImage(img);
+        }
+        List<Project> projects = root.copyProjectList();
+        for (Project p : projects) {
+            root.removeProject(p);
+        }
+        List<Dataset> datasets = root.copyDatasetList();
+        for (Dataset d : datasets) {
+            root.removeDataset(d);
+        }
+        List<Plate> plates = root.copyPlateList();
+        for (Plate p : plates) {
+            root.removePlate(p);
+        }
+        List<Experiment> experiments = root.copyExperimentList();
+        for (Experiment e : experiments) {
+            root.removeExperiment(e);
+        }
+        List<Experimenter> experimenters = root.copyExperimenterList();
+        for (Experimenter e : experimenters) {
+            root.removeExperimenter(e);
+        }
+        List<ExperimenterGroup> experimenterGroups = root.copyExperimenterGroupList();
+        for (ExperimenterGroup e : experimenterGroups) {
+            root.removeExperimenterGroup(e);
+        }
+        List<Screen> screens = root.copyScreenList();
+        for (Screen s : screens) {
+            root.removeScreen(s);
+        }
+        List<Instrument> instruments = root.copyInstrumentList();
+        for (Instrument i : instruments) {
+            root.removeInstrument(i);
+        }
+        List<Folder> folders = root.copyFolderList();
+        for (Folder f : folders) {
+            root.removeFolder(f);
         }
     }
 
