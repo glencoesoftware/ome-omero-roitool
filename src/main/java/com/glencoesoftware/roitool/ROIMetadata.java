@@ -33,6 +33,7 @@ import ome.xml.model.enums.Marker;
 import ome.xml.model.primitives.Color;
 import ome.xml.model.primitives.NonNegativeInteger;
 
+import omero.RInt;
 import omero.RString;
 import omero.model.Annotation;
 import omero.model.Ellipse;
@@ -325,9 +326,13 @@ public class ROIMetadata extends MetadataBase {
     private <X extends Shape> NonNegativeInteger getShapeTheC(int ROIIndex, int shapeIndex, Class<X> expectedSubclass) {
         final X shape = getShape(ROIIndex, shapeIndex, expectedSubclass);
         if (shape == null) {
-            return null;
+          return null;
         }
-        return toNonNegativeInteger(shape.getTheC());
+        RInt theC = shape.getTheC();
+        if (theC == null || fromRType(theC) < 0) {
+          return null;
+        }
+        return toNonNegativeInteger(theC);
     }
 
     private <X extends Shape> NonNegativeInteger getShapeTheT(int ROIIndex, int shapeIndex, Class<X> expectedSubclass) {
@@ -335,7 +340,11 @@ public class ROIMetadata extends MetadataBase {
         if (shape == null) {
             return null;
         }
-        return toNonNegativeInteger(shape.getTheT());
+        RInt theT = shape.getTheT();
+        if (theT == null || fromRType(theT) < 0) {
+          return null;
+        }
+        return toNonNegativeInteger(theT);
     }
 
     private <X extends Shape> NonNegativeInteger getShapeTheZ(int ROIIndex, int shapeIndex, Class<X> expectedSubclass) {
@@ -343,7 +352,11 @@ public class ROIMetadata extends MetadataBase {
         if (shape == null) {
             return null;
         }
-        return toNonNegativeInteger(shape.getTheZ());
+        RInt theZ = shape.getTheZ();
+        if (theZ == null || fromRType(theZ) < 0) {
+          return null;
+        }
+        return toNonNegativeInteger(theZ);
     }
 
     private <X extends Shape> AffineTransform getShapeTransform(int ROIIndex, int shapeIndex, Class<X> expectedSubclass) {
