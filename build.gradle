@@ -8,8 +8,10 @@ version = '0.2.7-SNAPSHOT'
 
 mainClassName = 'com.glencoesoftware.roitool.Main'
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
+java {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+}
 
 repositories {
     mavenCentral()
