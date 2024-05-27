@@ -12,13 +12,13 @@ sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 repositories {
-    jcenter()
+    mavenCentral()
     maven {
         name 'Unidata'
         url 'https://artifacts.unidata.ucar.edu/content/repositories/unidata-releases'
     }
     maven {
-        url 'http://artifacts.openmicroscopy.org/artifactory/maven/'
+        url 'https://artifacts.openmicroscopy.org/artifactory/maven/'
     }
 }
 
