@@ -8,17 +8,19 @@ version = '0.2.7-SNAPSHOT'
 
 mainClassName = 'com.glencoesoftware.roitool.Main'
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
+java {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+}
 
 repositories {
-    jcenter()
+    mavenCentral()
     maven {
         name 'Unidata'
         url 'https://artifacts.unidata.ucar.edu/content/repositories/unidata-releases'
     }
     maven {
-        url 'http://artifacts.openmicroscopy.org/artifactory/maven/'
+        url 'https://artifacts.openmicroscopy.org/artifactory/maven/'
     }
 }
 
@@ -58,8 +60,15 @@ dependencies {
 jar {
     manifest {
         attributes(
-            "Main-Class": mainClassName,
-            "Implementation-Version": version
+            "Created-By": "Gradle ${gradle.gradleVersion}",
+            "Build-Jdk": "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})",
+            "Built-By": System.properties['user.name'],
+            "Built-On": new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date()),
+            "Implementation-Build": "git rev-parse --verify HEAD".execute().getText().trim(),
+            "Implementation-Title": "OME OMERO ROI tool",
+            "Implementation-Version": archiveVersion,
+            "Implementation-Vendor": "Glencoe Software Inc.",
+            "Main-Class": mainClassName
         )
     }
 }
