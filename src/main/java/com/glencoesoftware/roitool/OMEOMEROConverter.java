@@ -227,7 +227,6 @@ public class OMEOMEROConverter {
             allAnnotations.addAll(currentAnnotations);
         }
 
-        boolean foundIndex = false;
         for (final Annotation ann : allAnnotations) {
             if (ann instanceof XmlAnnotation && ann.getNs() != null &&
                 ann.getNs().getValue().equals(PATHVIEWER_NS))
@@ -257,15 +256,14 @@ public class OMEOMEROConverter {
                         orderedRois.add(null);
                     }
                 }
-                foundIndex = true;
                 break;
             }
         }
-        if (!foundIndex) {
-            for (Roi r : rois) {
-                if (!Mask.class.isAssignableFrom(r.getShape(0).getClass())) {
-                    orderedRois.add(r);
-                }
+        ArrayList<Roi> missedRois = new ArrayList<Roi>(rois);
+        missedRois.removeAll(orderedRois);
+        for (Roi r : missedRois) {
+            if (!Mask.class.isAssignableFrom(r.getShape(0).getClass())) {
+                orderedRois.add(r);
             }
         }
 
